@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'server.apps.regapp',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -49,7 +50,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'mystepik.urls'
+ROOT_URLCONF = 'server.urls'
 
 TEMPLATES = [
     {
@@ -67,11 +68,12 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'mystepik.wsgi.application'
+WSGI_APPLICATION = 'server.wsgi.application'
 
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
+
 
 DATABASES = {
     'default': {
