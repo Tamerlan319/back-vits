@@ -8,6 +8,7 @@ from django.urls import reverse
 from django.core.mail import send_mail
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework import serializers
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:

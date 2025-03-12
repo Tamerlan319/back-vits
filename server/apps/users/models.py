@@ -10,11 +10,12 @@ class User(AbstractUser):
     last_name = models.CharField(max_length=255, blank=True, null=True)
     first_name = models.CharField(max_length=255, blank=True, null=True)
     middle_name = models.CharField(max_length=255, blank=True, null=True)
-    username = models.CharField(max_length=255, blank=True, null=True)
+    username = models.CharField(max_length=150, unique=True)  # Убедитесь, что unique=True
     email = models.EmailField(unique=True)
     role = models.CharField(max_length=50, choices=[('guest', 'Гость'), ('student', 'Студент'), ('teacher', 'Преподаватель'), ('admin', 'Администратор')])
     groups = models.ManyToManyField('Group', related_name='custom_user_groups', blank=True)
     user_permissions = models.ManyToManyField('auth.Permission', related_name='custom_user_permissions_set', blank=True)
+    is_active = models.BooleanField(default=False)  # По умолчанию пользователь неактивен
 
     def save(self, *args, **kwargs):
         if self.role in ['teacher', 'admin', 'student'] and self.groups.exists():

@@ -4,14 +4,15 @@ from rest_framework import routers
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 
-from server.apps.regapp.views import GroupView, RegisterView, UserView, AuthorizationView
-#from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
+from server.apps.users.views import GroupView, RegisterView, UserViewSet, AuthorizationView #представления из сервиса для работы с пользователями
+from server.apps.virtmuseum.views import AudienceViewSet
 
 router = routers.DefaultRouter()
 router.register(r'api/groups', GroupView, basename='group')
 router.register(r'api/register', RegisterView, basename='register')
 router.register(r'api/authorization', AuthorizationView, basename='authorization')
 router.register(r'api/users', UserViewSet, basename='user')
+router.register(r'api/audiences', AudienceViewSet, basename='audience')
 
 urlpatterns = [
     path('admin/', admin.site.urls),

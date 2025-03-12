@@ -32,7 +32,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=validated_data['email'],
             first_name=validated_data['first_name'],
             last_name=validated_data['last_name'],
-            role='guest'
+            is_active=False  # Пользователь неактивен до подтверждения почты
         )
         user.set_password(validated_data['password'])
         user.save()

@@ -36,6 +36,14 @@ REST_FRAMEWORK = {
     ),
 }
 
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = '@gmail.com'  # Ваш Gmail
+EMAIL_HOST_PASSWORD = ''  # Пароль от Gmail или пароль приложения
+DEFAULT_FROM_EMAIL = '@gmail.com'
+
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
@@ -73,11 +81,11 @@ SPECTACULAR_SETTINGS = {
 }
 
 INSTALLED_APPS = [
-    
+    'server.apps.virtmuseum',
     'rest_framework',
     'drf_spectacular', 
     'rest_framework_simplejwt',
-    'server.apps.regapp',
+    'server.apps.users',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
