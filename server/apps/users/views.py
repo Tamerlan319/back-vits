@@ -30,17 +30,18 @@ class RegisterView(viewsets.ModelViewSet):
     serializer_class = RegisterSerializer
     http_method_names = ['post']
 
-class AuthorizationView(viewsets.ModelViewSet):
-    # def post(self, request, *args, **kwargs):
-    #     serializer = AuthorizationSerializer(data=request.data, context={'request': request})
-    #     if serializer.is_valid():
-    #         user = serializer.validated_data['user']
-    #         # You can add additional logic here, such as generating a token or session.
-    #         return Response({"message": "Login successful", "user_id": user.id}, status=status.HTTP_200_OK)
-    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    queryset = User.objects.all()
-    serializer_class = AuthorizationSerializer
-    http_method_names = ['post']
+class AuthorizationView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = AuthorizationSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            from rest_framework_simplejwt.tokens import RefreshToken
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()

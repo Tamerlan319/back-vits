@@ -19,7 +19,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'first_name', 'last_name', 'password', 'password2')
+        fields = ('username', 'email', 'first_name', 'last_name', 'middle_name', 'password', 'password2')
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
@@ -32,6 +32,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=validated_data['email'],
             first_name=validated_data['first_name'],
             last_name=validated_data['last_name'],
+            middle_name=validated_data['middle_name'],
             is_active=False  # Пользователь неактивен до подтверждения почты
         )
         user.set_password(validated_data['password'])
@@ -57,4 +58,3 @@ class AuthorizationSerializer(serializers.Serializer):
 
         attrs['user'] = user
         return attrs
-
