@@ -3,9 +3,12 @@ from django.contrib import admin
 from rest_framework import routers
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-
 from server.apps.users.views import GroupView, RegisterView, UserViewSet, AuthorizationView #представления из сервиса для работы с пользователями
-from server.apps.virtmuseum.views import AudienceViewSet
+from server.apps.virtmuseum.views import AudienceViewSet #представления из сериса виртуального музея
+from server.apps.news.views import (
+    CategoryViewSet, TagViewSet, NewsViewSet, 
+    CommentViewSet, LikeViewSet
+)#представления из сервиса новостей
 
 router = routers.DefaultRouter()
 router.register(r'api/groups', GroupView, basename='group')
@@ -13,6 +16,11 @@ router.register(r'api/register', RegisterView, basename='register')
 #router.register(r'api/authorization', AuthorizationView, basename='authorization')
 router.register(r'api/users', UserViewSet, basename='user')
 router.register(r'api/audiences', AudienceViewSet, basename='audience')
+router.register(r'api/categories', CategoryViewSet, basename='categories')
+router.register(r'api/tags', TagViewSet, basename='tags')
+router.register(r'api/news', NewsViewSet, basename='news')
+router.register(r'api/comments', CommentViewSet, basename='comments')
+router.register(r'api/likes', LikeViewSet, basename='likes')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
