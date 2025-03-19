@@ -1,32 +1,48 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action   
-from .models import Audience, Characteristic
-from .serializers import AudienceSerializer, CharacteristicCreateSerializer
+from .models import Audience, Characteristic, AudienceImage
+from .serializers import AudienceCreateUpdateSerializer, CharacteristicCreateSerializer, AudienceImageCreateSerializer
+
+class AudienceImageViewSet(viewsets.ModelViewSet):
+    queryset = AudienceImage.objects.all()
+    serializer_class = AudienceImageCreateSerializer
+
+class CharacteristicViewSet(viewsets.ModelViewSet):
+    queryset = Characteristic.objects.all()
+    serializer_class = CharacteristicCreateSerializer
 
 class AudienceViewSet(viewsets.ModelViewSet):
     queryset = Audience.objects.all()
-    serializer_class = AudienceSerializer
+    serializer_class = AudienceCreateUpdateSerializer
 
-    def update(self, request, *args, **kwargs):
-        """
-        Полное обновление аудитории.
-        """
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=False)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return AudienceCreateUpdateSerializer
+        return AudienceCreateUpdateSerializer
 
-    def partial_update(self, request, *args, **kwargs):
+    @action(detail=False, methods=['post'])
+    def create_with_data(self, request):
         """
-        Частичное обновление аудитории.
+        Создание аудитории с характеристиками и изображениями.
         """
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
+        serializer = AudienceCreateUpdateSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['put'])
+    def update_with_data(self, request, pk=None):
+        """
+        Полное обновление аудитории с характеристиками и изображениями.
+        """
+        audience = self.get_object()
+        serializer = AudienceCreateUpdateSerializer(audience, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def destroy(self, request, *args, **kwargs):
         """
@@ -38,17 +54,3 @@ class AudienceViewSet(viewsets.ModelViewSet):
         instance.images.all().delete()
         # Удаляем саму аудиторию
         instance.delete()
-
-    @action(detail=True, methods=['post'])
-    def add_characteristic(self, request, pk=None):
-        """
-        Добавление характеристики для аудитории.
-        """
-        audience = self.get_object()
-        serializer = CharacteristicCreateSerializer(data=request.data)
-        
-        if serializer.is_valid():
-            serializer.save(audience=audience)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
