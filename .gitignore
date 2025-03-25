@@ -3,5 +3,5 @@ venv/
 __pycache__/
 *.pyc
 "@
-server/settings/environments/base.py
-server/settings/common.py
+#server/settings/environments/base.py
+#server/settings/common.py

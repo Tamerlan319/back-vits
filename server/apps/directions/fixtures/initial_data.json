@@ -1,0 +1,184 @@
+[
+    {
+      "model": "directions.department",
+      "pk": 1,
+      "fields": {
+        "name": "Информационных систем и технологий"
+      }
+    },
+    {
+      "model": "directions.department",
+      "pk": 2,
+      "fields": {
+        "name": "Прикладной математики и информационных технологий"
+      }
+    },
+    {
+      "model": "directions.department",
+      "pk": 3,
+      "fields": {
+        "name": "Защиты информации"
+      }
+    },
+    {
+      "model": "directions.educationlevel",
+      "pk": 1,
+      "fields": {
+        "name": "Бакалавриат",
+        "code": "bachelor"
+      }
+    },
+    {
+      "model": "directions.educationlevel",
+      "pk": 2,
+      "fields": {
+        "name": "Магистратура",
+        "code": "master"
+      }
+    },
+    {
+      "model": "directions.educationlevel",
+      "pk": 3,
+      "fields": {
+        "name": "СПО",
+        "code": "spo"
+      }
+    },
+    {
+      "model": "directions.program",
+      "pk": 1,
+      "fields": {
+        "department": 1,
+        "code": "09.03.02",
+        "name": "Информационные системы и технологии",
+        "level": 1,
+        "program_name": "Разработка программного обеспечения информационных систем",
+        "form": "Очная",
+        "description": "Программа готовит fullstack-разработчиков с углубленным изучением современных технологий.",
+        "career_opportunities": "Фронтенд-разработчик\nБэкенд-разработчик\nФуллстек-разработчик\nМобильный разработчик\nРазработчик игр"
+      }
+    },
+    {
+      "model": "directions.program",
+      "pk": 2,
+      "fields": {
+        "department": 1,
+        "code": "09.03.02",
+        "name": "Информационные системы и технологии",
+        "level": 1,
+        "program_name": "Информационные технологии в медиаиндустрии",
+        "form": "Очная",
+        "description": "Программа для будущих специалистов в области digital-медиа.",
+        "career_opportunities": "UX/UI дизайнер\nФронтенд-разработчик\nDigital-дизайнер"
+      }
+    },
+    {
+      "model": "directions.program",
+      "pk": 3,
+      "fields": {
+        "department": 1,
+        "code": "09.04.02",
+        "name": "Информационные системы и технологии",
+        "level": 2,
+        "program_name": "Руководство разработкой программного обеспечения",
+        "form": "Очная",
+        "description": "Программа для подготовки руководителей IT-проектов.",
+        "career_opportunities": "Team lead\nРуководитель отдела разработки\nСистемный архитектор"
+      }
+    },
+    {
+      "model": "directions.program",
+      "pk": 4,
+      "fields": {
+        "department": 2,
+        "code": "01.03.02",
+        "name": "Прикладная математика и информатика",
+        "level": 1,
+        "program_name": "Прикладная математика и информатика",
+        "form": "Очная",
+        "description": "Фундаментальная подготовка в области математики и программирования.",
+        "career_opportunities": "Аналитик данных\nРазработчик алгоритмов\nНаучный сотрудник"
+      }
+    },
+    {
+      "model": "directions.program",
+      "pk": 5,
+      "fields": {
+        "department": 2,
+        "code": "01.04.02",
+        "name": "Прикладная математика и информатика",
+        "level": 2,
+        "program_name": "Математическое моделирование и программирование",
+        "form": "Очная",
+        "description": "Программа для специалистов в области ИИ и мат. моделирования.",
+        "career_opportunities": "Специалист по ИИ\nData scientist\nАналитик сложных систем"
+      }
+    },
+    {
+      "model": "directions.program",
+      "pk": 6,
+      "fields": {
+        "department": 3,
+        "code": "10.03.01",
+        "name": "Информационная безопасность",
+        "level": 1,
+        "program_name": "Организация и технология защиты информации",
+        "form": "Очная",
+        "description": "Подготовка специалистов по кибербезопасности.",
+        "career_opportunities": "Инженер ИБ\nАналитик безопасности\nПентестер"
+      }
+    },
+    {
+      "model": "directions.program",
+      "pk": 7,
+      "fields": {
+        "department": 1,
+        "code": "09.02.07",
+        "name": "Информационные системы и программирование",
+        "level": 3,
+        "program_name": "Разработка веб-приложений",
+        "form": "Очная",
+        "description": "Практико-ориентированная программа СПО для web-разработчиков.",
+        "career_opportunities": "Веб-разработчик\nТехнический специалист\nАдминистратор сайтов"
+      }
+    },
+    {
+      "model": "directions.partnercompany",
+      "pk": 1,
+      "fields": {
+        "name": "Совкомбанк"
+      }
+    },
+    {
+      "model": "directions.partnercompany",
+      "pk": 2,
+      "fields": {
+        "name": "ММТР"
+      }
+    },
+    {
+      "model": "directions.partnercompany",
+      "pk": 3,
+      "fields": {
+        "name": "Yandex Cloud"
+      }
+    },
+    {
+      "model": "directions.programfeature",
+      "pk": 1,
+      "fields": {
+        "program": 1,
+        "title": "Стажировки в компаниях",
+        "description": "После 2 курса доступны стажировки в партнерских компаниях"
+      }
+    },
+    {
+      "model": "directions.programfeature",
+      "pk": 2,
+      "fields": {
+        "program": 1,
+        "title": "Проектная работа",
+        "description": "80% обучения - практика на реальных проектах"
+      }
+    }
+  ]

@@ -41,6 +41,17 @@ class News(models.Model):
         verbose_name_plural = "Новости"
         ordering = ['-created_at']
 
+class NewsImage(models.Model):
+    news = models.ForeignKey(News, related_name='images', on_delete=models.CASCADE)
+    image = models.ImageField(upload_to='news_images/')
+
+    def __str__(self):
+        return f"Image for {self.news.title}"
+
+    class Meta:
+        verbose_name = "Изображение"
+        verbose_name_plural = "Изображения"
+
 class Comment(models.Model):
     news = models.ForeignKey(News, on_delete=models.CASCADE, related_name='comments', verbose_name="Новость")
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='comments', verbose_name="Автор")
