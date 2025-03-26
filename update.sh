@@ -1,4 +1,5 @@
 #!/bin/bash
+chmod +x "$0"
 cd /home/Tamik327/back-vits || exit 1
 
 # Остановка старых процессов
