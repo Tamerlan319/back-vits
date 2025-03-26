@@ -9,15 +9,6 @@ pkill -f "python manage.py"
 git fetch origin
 git reset --hard origin/master
 
-# Настройка окружения
-source venv/bin/activate
-pip install -U pip
-pip install -r requirements.txt
-
-# Применение миграций
-python manage.py makemigrations
-python manage.py migrate
-
 # Перезагрузка приложения
 curl -X POST \
   "https://www.pythonanywhere.com/api/v0/user/Tamik327/webapps/tamik327.pythonanywhere.com/reload/" \
