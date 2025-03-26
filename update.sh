@@ -14,6 +14,7 @@ pip install -U pip
 pip install -r requirements.txt
 
 # Применение миграций
+python manage.py makemigrations
 python manage.py migrate
 
 # Перезагрузка приложения
