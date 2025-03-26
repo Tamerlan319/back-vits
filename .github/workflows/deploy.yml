@@ -19,11 +19,3 @@ jobs:
             echo "Error: Failed to reload app (HTTP $response)"
             exit 1
           fi
-      
-      - name: Set permissions
-        run: |
-          ssh Tamik327@ssh.pythonanywhere.com "
-            cd ~/back-vits
-            sed -i 's/\r$//' update.sh
-            chmod +x update.sh
-          "
