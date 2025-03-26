@@ -1,0 +1,21 @@
+name: Deploy to PythonAnywhere
+
+on: [push]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Reload PythonAnywhere app
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            "https://www.pythonanywhere.com/api/v0/user/Tamik327/webapps/tamik327.pythonanywhere.com/reload/" \
+            -H "Authorization: Token ${{ secrets.PA_API_TOKEN }}")
+          
+          if [ "$response" -ne 200 ]; then
+            echo "Error: Failed to reload app (HTTP $response)"
+            exit 1
+          fi
