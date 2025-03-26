@@ -16,7 +16,7 @@ from server.apps.directions.views import DepartmentViewSet, ProgramViewSet
 router = routers.DefaultRouter()
 router.register(r'api/groups', GroupView, basename='group')
 router.register(r'api/register', RegisterView, basename='register')
-router.register(r'api/authorization', AuthorizationView, basename='authorization')
+#router.register(r'api/authorization', AuthorizationView, basename='authorization')
 router.register(r'api/users', UserViewSet, basename='user')
 router.register(r'api/audiences', AudienceViewSet, basename='audience')
 router.register(r'api/categories', CategoryViewSet, basename='categories')
