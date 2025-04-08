@@ -84,7 +84,14 @@ SPECTACULAR_SETTINGS = {
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# Настройки микросервиса групп
+GROUP_SERVICE_URL = 'http://127.0.0.1:8000'  # или ваш URL
+SERVICE_AUTH_TOKEN = 'dev-internal-token'  # Общий для всех внутренних сервисов
+
 INSTALLED_APPS = [
+    'phonenumber_field',
+    'django_filters',
+    'server.apps.perscalendar',
     'server.apps.directions',
     'server.apps.news',
     'corsheaders',
@@ -100,6 +107,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 ]
+
+PHONENUMBER_DEFAULT_REGION = 'RU'
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -151,6 +160,7 @@ AUTH_USER_MODEL = 'users.User'
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     'server.apps.users.backends.EmailBackend',
+    'server.apps.users.backends.PhoneBackend',  # Аутентификация по телефону
 ]
 
 # Database

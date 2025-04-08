@@ -33,6 +33,8 @@ class Program(models.Model):
     form = models.CharField(max_length=50, default="Очная", verbose_name="Форма обучения")
     description = models.TextField(verbose_name="Описание программы")
     career_opportunities = models.TextField(verbose_name="Кем можно работать")
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
     
     def __str__(self):
         return f"{self.name} - {self.program_name} ({self.level})"

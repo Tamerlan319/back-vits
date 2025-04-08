@@ -1,4 +1,5 @@
 from rest_framework import viewsets, permissions, status
+from rest_framework.pagination import CursorPagination
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from .models import Category, Tag, News, Comment, Like
@@ -7,6 +8,11 @@ from .serializers import (
     CommentSerializer, LikeSerializer
 )
 from django.shortcuts import get_object_or_404
+
+class NewsCursorPagination(CursorPagination):
+    page_size = 10  # Количество новостей на странице
+    ordering = '-created_at'  # Обязательное поле для сортировки
+    cursor_query_param = 'cursor'  # Параметр в URL (по умолчанию 'cursor')
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
@@ -22,6 +28,14 @@ class NewsViewSet(viewsets.ModelViewSet):
     queryset = News.objects.all()
     serializer_class = NewsSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    pagination_class = NewsCursorPagination  # Используем курсорную пагинацию
+
+    @action(detail=False, methods=['get'])
+    def latest_news(self, request):
+        """3 последние новости для главной страницы (без пагинации)"""
+        queryset = News.objects.filter(is_published=True).order_by('-created_at')[:3]
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
     def like(self, request, pk=None):

@@ -1,7 +1,10 @@
 from rest_framework import serializers
-from .models import User, Group
+from .models import User, Group, PhoneVerification
 from django.contrib.auth.password_validation import validate_password
-
+from django.contrib.auth import authenticate
+from django.utils import timezone
+from datetime import timedelta
+import random
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -57,4 +60,43 @@ class AuthorizationSerializer(serializers.Serializer):
             raise serializers.ValidationError("Must include 'email' and 'password'.")
 
         attrs['user'] = user
+        return attrs
+
+class PhoneLoginSerializer(serializers.Serializer):
+    phone = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+    
+    def validate(self, attrs):
+        user = authenticate(
+            request=self.context.get('request'),
+            phone=attrs['phone'],
+            password=attrs['password']
+        )
+        
+        if not user:
+            raise serializers.ValidationError("Неверный номер телефона или пароль.")
+        if not user.phone_verified:
+            raise serializers.ValidationError("Телефон не подтвержден.")
+        
+        attrs['user'] = user
+        return attrs
+
+class PhoneVerifySerializer(serializers.Serializer):
+    phone = serializers.CharField()
+    code = serializers.CharField(max_length=6)
+    
+    def validate(self, attrs):
+        try:
+            verification = PhoneVerification.objects.filter(
+                user__phone=attrs['phone'],
+                code=attrs['code'],
+                is_used=False
+            ).latest('created_at')
+        except PhoneVerification.DoesNotExist:
+            raise serializers.ValidationError("Неверный код подтверждения.")
+        
+        if not verification.is_valid():
+            raise serializers.ValidationError("Срок действия кода истек.")
+        
+        attrs['verification'] = verification
         return attrs
