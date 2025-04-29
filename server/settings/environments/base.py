@@ -133,6 +133,19 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 ALLOWED_HOSTS = ['*']
 
+# Разрешаем cookies и авторизацию
+CORS_ALLOW_CREDENTIALS = True
+
+# Разрешаем все методы (GET, POST, PUT и т.д.)
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
 # ---------------------------------
 
 ROOT_URLCONF = 'server.urls'

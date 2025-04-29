@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework import serializers
 import random
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import IsAuthenticated
 
 class GroupView(viewsets.ModelViewSet):
     queryset = Group.objects.all()
@@ -20,7 +21,24 @@ class GroupView(viewsets.ModelViewSet):
 class UserView(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    http_method_names = ['get']
+    http_method_names = ['get', 'head', 'options']
+
+    def get_permissions(self):
+        if self.action == 'me':
+            return [IsAuthenticated()]
+        return super().get_permissions()
+
+    @action(detail=False, methods=['get'], url_path='me', url_name='me')
+    def me(self, request):
+        """Получение информации о текущем пользователе"""
+        if not request.user.is_authenticated:
+            return Response(
+                {"detail": "Не предоставлены данные для аутенфикации."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)
 
 class RegisterView(viewsets.ModelViewSet):
     queryset = User.objects.all()
