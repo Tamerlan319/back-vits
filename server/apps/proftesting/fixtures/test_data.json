@@ -1,0 +1,302 @@
+[
+    {
+        "model": "proftesting.questiongroup",
+        "pk": 1,
+        "fields": {
+            "name": "Технические направления",
+            "education_level": 1
+        }
+    },
+    {
+        "model": "proftesting.questiongroup",
+        "pk": 2,
+        "fields": {
+            "name": "Гуманитарные направления",
+            "education_level": 1
+        }
+    },
+
+    {
+        "model": "proftesting.question",
+        "pk": 1,
+        "fields": {
+            "text": "Как вы относитесь к решению сложных технических задач?",
+            "group": 1,
+            "order": 1
+        }
+    },
+    {
+        "model": "proftesting.question",
+        "pk": 2,
+        "fields": {
+            "text": "Нравится ли вам работать с кодом и алгоритмами?",
+            "group": 1,
+            "order": 2
+        }
+    },
+    {
+        "model": "proftesting.question",
+        "pk": 3,
+        "fields": {
+            "text": "Интересно ли вам разбираться в устройстве техники?",
+            "group": 1,
+            "order": 3
+        }
+    },
+    {
+        "model": "proftesting.question",
+        "pk": 4,
+        "fields": {
+            "text": "Как вы относитесь к математике и точным наукам?",
+            "group": 1,
+            "order": 4
+        }
+    },
+    {
+        "model": "proftesting.question",
+        "pk": 5,
+        "fields": {
+            "text": "Хотели бы вы разрабатывать новые технологии?",
+            "group": 1,
+            "order": 5
+        }
+    },
+    {
+        "model": "proftesting.question",
+        "pk": 6,
+        "fields": {
+            "text": "Интересно ли вам анализировать данные?",
+            "group": 1,
+            "order": 6
+        }
+    },
+
+    {
+        "model": "proftesting.question",
+        "pk": 7,
+        "fields": {
+            "text": "Как вы относитесь к работе с людьми?",
+            "group": 2,
+            "order": 1
+        }
+    },
+    {
+        "model": "proftesting.question",
+        "pk": 8,
+        "fields": {
+            "text": "Нравится ли вам изучать языки и культуру?",
+            "group": 2,
+            "order": 2
+        }
+    },
+    {
+        "model": "proftesting.question",
+        "pk": 9,
+        "fields": {
+            "text": "Интересно ли вам решать социальные проблемы?",
+            "group": 2,
+            "order": 3
+        }
+    },
+    {
+        "model": "proftesting.question",
+        "pk": 10,
+        "fields": {
+            "text": "Как вы относитесь к творческой деятельности?",
+            "group": 2,
+            "order": 4
+        }
+    },
+    {
+        "model": "proftesting.question",
+        "pk": 11,
+        "fields": {
+            "text": "Хотели бы вы работать в сфере образования?",
+            "group": 2,
+            "order": 5
+        }
+    },
+    {
+        "model": "proftesting.question",
+        "pk": 12,
+        "fields": {
+            "text": "Интересно ли вам анализировать литературу?",
+            "group": 2,
+            "order": 6
+        }
+    },
+
+    {
+        "model": "proftesting.answeroption",
+        "pk": 1,
+        "fields": {
+            "question": 1,
+            "text": "Очень нравится"
+        }
+    },
+    {
+        "model": "proftesting.answeroption",
+        "pk": 2,
+        "fields": {
+            "question": 1,
+            "text": "Скорее нравится"
+        }
+    },
+    {
+        "model": "proftesting.answeroption",
+        "pk": 3,
+        "fields": {
+            "question": 1,
+            "text": "Нейтрально"
+        }
+    },
+    {
+        "model": "proftesting.answeroption",
+        "pk": 4,
+        "fields": {
+            "question": 1,
+            "text": "Не нравится"
+        }
+    },
+
+    {
+        "model": "proftesting.answerprogramweight",
+        "pk": 1,
+        "fields": {
+            "answer_option": 1,
+            "program": 1,
+            "weight": 5
+        }
+    },
+    {
+        "model": "proftesting.answerprogramweight",
+        "pk": 2,
+        "fields": {
+            "answer_option": 2,
+            "program": 1,
+            "weight": 3
+        }
+    },
+    {
+        "model": "proftesting.answerprogramweight",
+        "pk": 3,
+        "fields": {
+            "answer_option": 3,
+            "program": 1,
+            "weight": 1
+        }
+    },
+    {
+        "model": "proftesting.answerprogramweight",
+        "pk": 4,
+        "fields": {
+            "answer_option": 4,
+            "program": 1,
+            "weight": 0
+        }
+    },
+
+    {
+        "model": "proftesting.answeroption",
+        "pk": 5,
+        "fields": {
+            "question": 2,
+            "text": "Очень нравится"
+        }
+    },
+    {
+        "model": "proftesting.answeroption",
+        "pk": 6,
+        "fields": {
+            "question": 2,
+            "text": "Скорее нравится"
+        }
+    },
+    {
+        "model": "proftesting.answeroption",
+        "pk": 7,
+        "fields": {
+            "question": 2,
+            "text": "Нейтрально"
+        }
+    },
+    {
+        "model": "proftesting.answeroption",
+        "pk": 8,
+        "fields": {
+            "question": 2,
+            "text": "Не нравится"
+        }
+    },
+
+    {
+        "model": "proftesting.answerprogramweight",
+        "pk": 5,
+        "fields": {
+            "answer_option": 5,
+            "program": 1,
+            "weight": 5
+        }
+    },
+    {
+        "model": "proftesting.answerprogramweight",
+        "pk": 6,
+        "fields": {
+            "answer_option": 6,
+            "program": 1,
+            "weight": 3
+        }
+    },
+
+    {
+        "model": "proftesting.answeroption",
+        "pk": 9,
+        "fields": {
+            "question": 7,
+            "text": "Очень нравится"
+        }
+    },
+    {
+        "model": "proftesting.answeroption",
+        "pk": 10,
+        "fields": {
+            "question": 7,
+            "text": "Скорее нравится"
+        }
+    },
+    {
+        "model": "proftesting.answeroption",
+        "pk": 11,
+        "fields": {
+            "question": 7,
+            "text": "Нейтрально"
+        }
+    },
+    {
+        "model": "proftesting.answeroption",
+        "pk": 12,
+        "fields": {
+            "question": 7,
+            "text": "Не нравится"
+        }
+    },
+
+    {
+        "model": "proftesting.answerprogramweight",
+        "pk": 7,
+        "fields": {
+            "answer_option": 9,
+            "program": 2,
+            "weight": 5
+        }
+    },
+    {
+        "model": "proftesting.answerprogramweight",
+        "pk": 8,
+        "fields": {
+            "answer_option": 10,
+            "program": 2,
+            "weight": 3
+        }
+    }
+]

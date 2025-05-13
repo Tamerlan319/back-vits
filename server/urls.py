@@ -13,23 +13,31 @@ from server.apps.news.views import (
 )#представления из сервиса новостей
 from server.apps.directions.views import DepartmentViewSet, ProgramViewSet
 from server.apps.perscalendar.views import EventViewSet
+from server.apps.proftesting.views import (
+    EducationLevelsView,
+    QuestionGroupsView,
+    QuestionsView,
+    StartTestView,
+    SubmitAnswerView,
+    CompleteTestView,
+    TestResultView
+)
 
 router = routers.DefaultRouter()
-router.register(r'api/groups', GroupView, basename='group')
-router.register(r'api/register', RegisterView, basename='register')
-router.register(r'api/users', UserView, basename='users')
-router.register(r'api/audiences', AudienceViewSet, basename='audience')
-router.register(r'api/categories', CategoryViewSet, basename='categories')
-router.register(r'api/tags', TagViewSet, basename='tags')
-router.register(r'api/news', NewsViewSet, basename='news')
-router.register(r'api/news/latest_news', NewsViewSet, basename='latest_news')
-router.register(r'api/comments', CommentViewSet, basename='comments')
-router.register(r'api/likes', LikeViewSet, basename='likes')
-router.register(r'api/audience-images', AudienceImageViewSet, basename='audience-images')
-router.register(r'api/characteristics', CharacteristicViewSet, basename='characteristics')
-router.register(r'api/departments', DepartmentViewSet, basename='departments')
-router.register(r'api/programs', ProgramViewSet, basename='programs')
-router.register(r'api/events', EventViewSet, basename='events')
+router.register(r'api/groups', GroupView, basename='group') #получить список групп
+router.register(r'api/register', RegisterView, basename='register') #регистрация
+router.register(r'api/users', UserView, basename='users') #получить список юзеров
+router.register(r'api/audiences', AudienceViewSet, basename='audience') #получить список адуиторий
+router.register(r'api/categories', CategoryViewSet, basename='categories') #категории новостей
+router.register(r'api/tags', TagViewSet, basename='tags') #теги новостей
+router.register(r'api/news', NewsViewSet, basename='news') #получить новости
+router.register(r'api/news/latest_news', NewsViewSet, basename='latest_news') #получить последние три новости
+router.register(r'api/comments', CommentViewSet, basename='comments') #комментарии
+router.register(r'api/likes', LikeViewSet, basename='likes') #лайки
+router.register(r'api/audience-images', AudienceImageViewSet, basename='audience-images') #получить фото аудиторий
+router.register(r'api/characteristics', CharacteristicViewSet, basename='characteristics') #получить характеристики аудитории
+router.register(r'api/departments', DepartmentViewSet, basename='departments') #получить направления обучения
+router.register(r'api/programs', ProgramViewSet, basename='programs') #получить программы обучения
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -40,6 +48,13 @@ urlpatterns = [
     path('api/login/phone/', PhoneLoginView.as_view(), name='phone_login'),
     path('api/send-code/', SendVerificationCodeView.as_view(), name='send_code'),
     path('api/verify-phone/', VerifyPhoneView.as_view(), name='verify_phone'),
+    path('api/education-levels/', EducationLevelsView.as_view(), name='education-levels'),
+    path('api/question-groups/', QuestionGroupsView.as_view(), name='question-groups'),
+    path('api/questions/', QuestionsView.as_view(), name='questions'),
+    path('api/start-test/', StartTestView.as_view(), name='start-test'),
+    path('api/sessions/<int:session_id>/answers/', SubmitAnswerView.as_view(), name='submit-answers'),
+    path('api/sessions/<int:session_id>/complete/', CompleteTestView.as_view(), name='complete-test'),
+    path('api/results/<int:session_id>/', TestResultView.as_view(), name='test-result'),
 ]
 
 if settings.DEBUG:
