@@ -3,6 +3,8 @@ from rest_framework.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 from .models import Category, Tag, News, Comment, Like, NewsImage
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
+from django.db.models import Q
 
 User = get_user_model()
 
@@ -36,20 +38,55 @@ class TagSerializer(serializers.ModelSerializer):
             raise ValidationError("Название тега должно содержать минимум 2 символа")
         return value
 
-class NewsSerializer(serializers.ModelSerializer):
-    author = UserSerializer(read_only=True)
-    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
-    tags = serializers.PrimaryKeyRelatedField(queryset=Tag.objects.all(), many=True)
-    comments_count = serializers.SerializerMethodField()
-    likes_count = serializers.SerializerMethodField()
-    images = NewsImageSerializer(many=True, read_only=True)
+class TagRelatedField(serializers.RelatedField):
+    def to_internal_value(self, data):
+        if isinstance(data, int):
+            try:
+                return Tag.objects.get(pk=data)
+            except Tag.DoesNotExist:
+                raise ValidationError(f"Тег с ID {data} не существует")
+        elif isinstance(data, str):
+            tag, created = Tag.objects.get_or_create(name=data)
+            return tag
+        raise ValidationError("Тег должен быть ID (число) или названием (строка)")
+
+    def to_representation(self, value):
+        return TagSerializer(value).data
+
+class CategoryRelatedField(serializers.RelatedField):
+    def to_internal_value(self, data):
+        if isinstance(data, int):
+            try:
+                return Category.objects.get(pk=data)
+            except Category.DoesNotExist:
+                raise ValidationError(f"Категория с ID {data} не существует")
+        elif isinstance(data, str):
+            category, created = Category.objects.get_or_create(
+                name=data, 
+                defaults={'description': 'Автоматически созданная категория'}
+            )
+            return category
+        raise ValidationError("Категория должна быть ID (число) или названием (строка)")
+
+    def to_representation(self, value):
+        return CategorySerializer(value).data
+
+class NewsWriteSerializer(serializers.ModelSerializer):
+    category = CategoryRelatedField(
+        queryset=Category.objects.all(),
+        required=True
+    )
+    tags = TagRelatedField(
+        queryset=Tag.objects.all(),
+        many=True,
+        required=True
+    )
     uploaded_images = serializers.ListField(
         child=serializers.ImageField(
-            allow_empty_file=False, 
+            max_length=100000,
+            allow_empty_file=False,
             use_url=False,
-            validators=[
-                FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'gif'])
-            ]
+            validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'gif'])]
         ),
         write_only=True,
         required=False
@@ -58,47 +95,86 @@ class NewsSerializer(serializers.ModelSerializer):
     class Meta:
         model = News
         fields = [
-            'id', 'title', 'content', 'images', 'uploaded_images', 'created_at', 'updated_at',
-            'is_published', 'author', 'category', 'tags', 'comments_count', 'likes_count'
+            'title', 'content', 'category', 'tags',
+            'is_published', 'uploaded_images'
         ]
         extra_kwargs = {
             'title': {'min_length': 5, 'max_length': 200},
             'content': {'min_length': 50}
         }
 
+    def create(self, validated_data):
+        # Удаляем author, если он случайно попал в данные
+        validated_data.pop('author', None)
+        
+        uploaded_images = validated_data.pop('uploaded_images', [])
+        tags = validated_data.pop('tags', [])
+        category = validated_data.pop('category')
+        
+        # Создаём новость
+        news = News.objects.create(
+            author=self.context['request'].user,
+            category=category,
+            **validated_data
+        )
+        
+        # Добавляем теги
+        news.tags.set(tags)
+        
+        # Добавляем изображения (не более 6)
+        for image in uploaded_images[:6]:
+            NewsImage.objects.create(news=news, image=image)
+            
+        return news
+
+    def update(self, instance, validated_data):
+        uploaded_images = validated_data.pop('uploaded_images', [])
+        tags = validated_data.pop('tags', None)
+        category = validated_data.pop('category', None)
+        
+        # Обновляем основные поля
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        if category is not None:
+            instance.category = category
+        
+        instance.save()
+        
+        # Обновляем теги если они переданы
+        if tags is not None:
+            instance.tags.set(tags)
+        
+        # Добавляем новые изображения (проверяем общее количество)
+        existing_images_count = instance.images.count()
+        remaining_slots = max(0, 6 - existing_images_count)
+        
+        for image in uploaded_images[:remaining_slots]:
+            NewsImage.objects.create(news=instance, image=image)
+            
+        return instance
+
+class NewsReadSerializer(serializers.ModelSerializer):
+    author = UserSerializer(read_only=True)
+    category = CategorySerializer(read_only=True)
+    tags = TagSerializer(many=True, read_only=True)
+    images = NewsImageSerializer(many=True, read_only=True)
+    comments_count = serializers.SerializerMethodField()
+    likes_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = News
+        fields = [
+            'id', 'title', 'content', 'author', 'category', 'tags',
+            'images', 'is_published', 'created_at', 'updated_at',
+            'comments_count', 'likes_count'
+        ]
+
     def get_comments_count(self, obj):
         return obj.comments.count()
 
     def get_likes_count(self, obj):
         return obj.likes.count()
-
-    def validate(self, data):
-        # Проверка, что новость имеет хотя бы один тег
-        if 'tags' in data and not data['tags']:
-            raise ValidationError("Новость должна содержать хотя бы один тег")
-        
-        # Проверка, что загружено не более 5 изображений
-        if 'uploaded_images' in data and len(data['uploaded_images']) > 5:
-            raise ValidationError("Можно загрузить не более 5 изображений")
-            
-        return data
-
-    def create(self, validated_data):
-        try:
-            uploaded_images = validated_data.pop('uploaded_images', [])
-            tags_data = validated_data.pop('tags')
-            category_data = validated_data.pop('category')
-            
-            news = News.objects.create(**validated_data, category=category_data)
-            news.tags.set(tags_data)
-            
-            for image_data in uploaded_images:
-                NewsImage.objects.create(news=news, image=image_data)
-                
-            return news
-        except Exception as e:
-            raise ValidationError(f"Ошибка при создании новости: {str(e)}")
-
 
 class CommentSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)

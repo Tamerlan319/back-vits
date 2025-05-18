@@ -5,7 +5,7 @@ from django.conf.urls.static import static
 from rest_framework import routers
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from server.apps.users.views import GroupView, RegisterView, UserViewSet, UserView, AuthorizationView, PhoneLoginView, SendVerificationCodeView, VerifyPhoneView #представления из сервиса для работы с пользователями
+from server.apps.users.views import GroupView, UserViewSet, UserView, AuthorizationView, PhoneLoginView, SendVerificationCodeView, VerifyPhoneView, RegisterInitView, RegisterConfirmView #представления из сервиса для работы с пользователями
 from server.apps.virtmuseum.views import AudienceViewSet, AudienceImageViewSet, CharacteristicViewSet #представления из сериса виртуального музея
 from server.apps.news.views import (
     CategoryViewSet, TagViewSet, NewsViewSet, 
@@ -25,7 +25,7 @@ from server.apps.proftesting.views import (
 
 router = routers.DefaultRouter()
 router.register(r'api/groups', GroupView, basename='group') #получить список групп
-router.register(r'api/register', RegisterView, basename='register') #регистрация
+# router.register(r'api/register', RegisterView, basename='register') #регистрация
 router.register(r'api/users', UserView, basename='users') #получить список юзеров
 router.register(r'api/audiences', AudienceViewSet, basename='audience') #получить список адуиторий
 router.register(r'api/categories', CategoryViewSet, basename='categories') #категории новостей
@@ -44,7 +44,11 @@ urlpatterns = [
     path('', include(router.urls)),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('api/authorization/', AuthorizationView.as_view(), name='authorization'),
+    # path('api/register', RegisterView.as_view(), name='register'), #регистрация
+    # path('api/authorization/', AuthorizationView.as_view(), name='authorization'),
+    path('api/register/init/', RegisterInitView.as_view(), name='register-init'),
+    path('api/register/confirm/', RegisterConfirmView.as_view(), name='register-confirm'),
+    path('api/authorization/', AuthorizationView.as_view(), name='login'),
     path('api/login/phone/', PhoneLoginView.as_view(), name='phone_login'),
     path('api/send-code/', SendVerificationCodeView.as_view(), name='send_code'),
     path('api/verify-phone/', VerifyPhoneView.as_view(), name='verify_phone'),
@@ -55,6 +59,7 @@ urlpatterns = [
     path('api/sessions/<int:session_id>/answers/', SubmitAnswerView.as_view(), name='submit-answers'),
     path('api/sessions/<int:session_id>/complete/', CompleteTestView.as_view(), name='complete-test'),
     path('api/results/<int:session_id>/', TestResultView.as_view(), name='test-result'),
+    path('__debug__/', include('debug_toolbar.urls')),  # дебаг для кеширования
 ]
 
 if settings.DEBUG:

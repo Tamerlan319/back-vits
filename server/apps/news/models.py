@@ -40,6 +40,12 @@ class News(models.Model):
         verbose_name = "Новость"
         verbose_name_plural = "Новости"
         ordering = ['-created_at']
+    
+    def save(self, *args, **kwargs):
+        # Проверка количества изображений перед сохранением
+        if self.pk and self.images.count() > 6:
+            raise ValidationError("Нельзя прикрепить более 6 изображений к новости")
+        super().save(*args, **kwargs)
 
 class NewsImage(models.Model):
     news = models.ForeignKey(News, related_name='images', on_delete=models.CASCADE)

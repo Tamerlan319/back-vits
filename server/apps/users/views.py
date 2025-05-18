@@ -1,6 +1,6 @@
-from rest_framework import status, viewsets, generics
-from .models import Group, User, PhoneVerification
-from .serializers import UserSerializer, GroupSerializer, RegisterSerializer, AuthorizationSerializer, PhoneLoginSerializer, PhoneVerifySerializer
+from rest_framework import views, status, viewsets, generics
+from .models import Group, User, PhoneVerification, PhoneConfirmation
+from .serializers import UserSerializer, GroupSerializer, AuthorizationSerializer, PhoneLoginSerializer, PhoneVerifySerializer, RegisterInitSerializer, RegisterConfirmSerializer
 from rest_framework.views import APIView
 from .utils import generate_confirmation_token, confirm_token
 from django.conf import settings
@@ -12,6 +12,9 @@ from rest_framework import serializers
 import random
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
+from datetime import timedelta
+from django.utils import timezone
+import requests
 
 class GroupView(viewsets.ModelViewSet):
     queryset = Group.objects.all()
@@ -40,29 +43,137 @@ class UserView(viewsets.ModelViewSet):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 
-class RegisterView(viewsets.ModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = RegisterSerializer
-    http_method_names = ['post']
+# class RegisterView(views.APIView):
+#     def post(self, request):
+#         serializer = RegisterSerializer(data=request.data)
+#         if serializer.is_valid():
+#             user = serializer.save()
+            
+#             # Генерируем код подтверждения
+#             code = str(random.randint(100000, 999999))
+#             PhoneVerification.objects.create(
+#                 user=user,
+#                 code=code,
+#                 is_used=False
+#             )
+            
+#             # В реальном приложении здесь будет отправка SMS
+#             print(f"Код подтверждения для {user.phone}: {code}")
+            
+#             return Response({
+#                 "message": "Регистрация успешна. Подтвердите телефон.",
+#                 "username": user.username,
+#                 "phone": str(user.phone)
+#             }, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class AuthorizationView(APIView):
-    def post(self, request, *args, **kwargs):
-        serializer = AuthorizationSerializer(data=request.data, context={'request': request})
+class RegisterInitView(views.APIView):
+    def post(self, request):
+        serializer = RegisterInitSerializer(data=request.data)
+        if serializer.is_valid():
+            data = serializer.validated_data
+            
+            # Удаляем старые подтверждения для этого номера
+            PhoneConfirmation.objects.filter(phone=data['phone']).delete()
+            
+            # Генерируем код
+            code = str(random.randint(100000, 999999))
+            
+            # Сохраняем данные для подтверждения
+            PhoneConfirmation.objects.create(
+                phone=data['phone'],
+                code=code,
+                registration_data={
+                    'username': data['username'],
+                    'first_name': data.get('first_name', ''),
+                    'last_name': data.get('last_name', ''),
+                    'password': data['password']
+                }
+            )
+            
+            # В реальном приложении здесь отправка SMS
+            print(f"Код подтверждения для {data['phone']}: {code}")
+            
+            return Response({
+                "status": "success",
+                "message": "Код подтверждения отправлен",
+                "phone": data['phone'],
+                "next_step": "confirm_code"
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class RegisterConfirmView(views.APIView):
+    def post(self, request):
+        serializer = RegisterConfirmSerializer(data=request.data)
+        if serializer.is_valid():
+            data = serializer.validated_data
+            confirmation = data['confirmation']
+            reg_data = confirmation.registration_data
+            
+            # Создаем пользователя
+            user = User.objects.create_user(
+                username=reg_data['username'],
+                phone=confirmation.phone,
+                first_name=reg_data['first_name'],
+                last_name=reg_data['last_name'],
+                password=reg_data['password'],
+                phone_verified=True
+            )
+            
+            # Удаляем запись подтверждения
+            confirmation.delete()
+            
+            # # Генерируем токены
+            # refresh = RefreshToken.for_user(user)
+            
+            return Response({
+                "status": "success",
+                "message": "Регистрация завершена",
+                # "tokens": {
+                #     "refresh": str(refresh),
+                #     "access": str(refresh.access_token)
+                # },
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "phone": str(user.phone)
+                }
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class AuthorizationView(views.APIView):
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             user = serializer.validated_data['user']
-            from rest_framework_simplejwt.tokens import RefreshToken
             refresh = RefreshToken.for_user(user)
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
-            }, status=status.HTTP_200_OK)
+                'user_id': user.id,
+                'username': user.username,
+                'phone': str(user.phone)
+            })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# class AuthorizationView(APIView):
+#     def post(self, request, *args, **kwargs):
+#         serializer = AuthorizationSerializer(data=request.data, context={'request': request})
+#         if serializer.is_valid():
+#             user = serializer.validated_data['user']
+#             from rest_framework_simplejwt.tokens import RefreshToken
+#             refresh = RefreshToken.for_user(user)
+#             return Response({
+#                 'refresh': str(refresh),
+#                 'access': str(refresh.access_token),
+#             }, status=status.HTTP_200_OK)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
-    @action(detail=False, methods=['post'], serializer_class=RegisterSerializer)
+    @action(detail=False, methods=['post'], serializer_class=RegisterInitSerializer)
     def register(self, request):
         """
         Регистрация нового пользователя.
@@ -124,28 +235,109 @@ class PhoneLoginView(APIView):
             })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# class SendVerificationCodeView(APIView):
+#     def post(self, request):
+#         phone = request.data.get('phone')
+#         if not phone:
+#             return Response({"error": "Phone required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+#         try:
+#             user = User.objects.get(phone=phone)
+#         except User.DoesNotExist:
+#             return Response({"error": "Пользователь не найден"}, status=status.HTTP_404_NOT_FOUND)
+        
+#         code = str(random.randint(100000, 999999))
+#         PhoneVerification.objects.create(
+#             user=user,
+#             code=code,
+#             is_used=False
+#         )
+        
+#         # В режиме разработки выводим код в консоль
+#         print(f"\nКод подтверждения для {phone}: {code}\n")
+        
+#         return Response({"message": "Код отправлен"})
+
 class SendVerificationCodeView(APIView):
     def post(self, request):
         phone = request.data.get('phone')
         if not phone:
-            return Response({"error": "Phone required"}, status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response(
+                {"error": "Укажите номер телефона"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Удаляем все нецифровые символы (для совместимости с API)
+        phone = ''.join(filter(str.isdigit, phone))
+
         try:
             user = User.objects.get(phone=phone)
         except User.DoesNotExist:
-            return Response({"error": "Пользователь не найден"}, status=status.HTTP_404_NOT_FOUND)
-        
+            return Response(
+                {"error": "Пользователь не найден"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверяем, не запрашивали ли код недавно
+        last_code = PhoneVerification.objects.filter(
+            user=user,
+            created_at__gte=timezone.now() - timedelta(minutes=1)
+        ).first()
+
+        if last_code:
+            return Response(
+                {"error": "Повторный код можно запросить через 1 минуту"},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+
+        # Генерируем 6-значный код
         code = str(random.randint(100000, 999999))
+
+        # Сохраняем код в базу
         PhoneVerification.objects.create(
             user=user,
             code=code,
             is_used=False
         )
-        
-        # В режиме разработки выводим код в консоль
-        print(f"\nКод подтверждения для {phone}: {code}\n")
-        
-        return Response({"message": "Код отправлен"})
+
+        # Если DEBUG=True, выводим код в консоль (для тестов)
+        if settings.DEBUG:
+            print(f"\n🔴 Код подтверждения для {phone}: {code}\n")
+            return Response(
+                {"message": "Код отправлен (тестовый режим)", "code": code},
+                status=status.HTTP_200_OK
+            )
+
+        # Отправляем SMS через sms.ru
+        smsru_url = "https://sms.ru/sms/send"
+        params = {
+            "api_id": settings.SMSRU_API_KEY,
+            "to": phone,
+            "msg": f"{code} - ваш код для входа в MyApp",
+            "json": 1,
+            "from": settings.SMSRU_SENDER
+        }
+
+        try:
+            response = requests.get(smsru_url, params=params)
+            data = response.json()
+
+            if data.get("status") == "OK":
+                return Response(
+                    {"message": "Код отправлен на ваш телефон"},
+                    status=status.HTTP_200_OK
+                )
+            else:
+                return Response(
+                    {"error": f"Ошибка SMS.RU: {data.get('status_text', 'Unknown error')}"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        except Exception as e:
+            return Response(
+                {"error": f"Ошибка при отправке SMS: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class VerifyPhoneView(APIView):
     def post(self, request):

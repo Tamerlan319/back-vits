@@ -1,8 +1,10 @@
 from django.contrib import admin
-from .models import User, Group, Student, Teacher, PhoneVerification
+from .models import User, Group, Student, Teacher, PhoneVerification, PhoneConfirmation
 from django.contrib.auth.admin import UserAdmin
 
 class CustomUserAdmin(UserAdmin):
+
+
     # Добавляем телефон в список отображаемых полей
     list_display = ('username', 'email', 'phone', 'role', 'is_active')
     
@@ -32,6 +34,7 @@ class CustomUserAdmin(UserAdmin):
 # Исправленная регистрация - передаём только модель и кастомный админ-класс
 admin.site.register(User, CustomUserAdmin)  # Только 2 аргумента!
 admin.site.register(PhoneVerification)
+admin.site.register(PhoneConfirmation)
 admin.site.register(Group)
 admin.site.register(Student)
 admin.site.register(Teacher)

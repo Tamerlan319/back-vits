@@ -5,16 +5,26 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from .models import Category, Tag, News, Comment, Like
 from .serializers import (
-    CategorySerializer, TagSerializer, NewsSerializer, 
+    CategorySerializer, TagSerializer, NewsReadSerializer, NewsWriteSerializer,
     CommentSerializer, LikeSerializer
 )
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import ObjectDoesNotExist
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 class IsAdminOrReadOnly(permissions.BasePermission):
+    """
+    Кастомное разрешение:
+    - Чтение разрешено всем
+    - Создание/редактирование только администраторам
+    """
     def has_permission(self, request, view):
+        # Разрешаем GET, HEAD, OPTIONS запросы всем
         if request.method in permissions.SAFE_METHODS:
             return True
+            
+        # POST, PUT, PATCH, DELETE только для админов
         return request.user.is_authenticated and request.user.role == 'admin'
 
 class NewsCursorPagination(CursorPagination):
@@ -44,19 +54,69 @@ class TagViewSet(viewsets.ModelViewSet):
 
 class NewsViewSet(viewsets.ModelViewSet):
     queryset = News.objects.all()
-    serializer_class = NewsSerializer
     permission_classes = [IsAdminOrReadOnly]
     pagination_class = NewsCursorPagination
     
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return NewsWriteSerializer
+        return NewsReadSerializer
+
     def get_queryset(self):
         queryset = super().get_queryset()
         if not self.request.user.is_authenticated or self.request.user.role != 'admin':
             queryset = queryset.filter(is_published=True)
-        return queryset
+        return queryset.select_related('author', 'category').prefetch_related('tags', 'images')
 
     def perform_create(self, serializer):
         try:
-            serializer.save(author=self.request.user)
+            instance = serializer.save(author=self.request.user)
+            
+            # Отправка WebSocket уведомления
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                'news_updates',
+                {
+                    'type': 'news_update',
+                    'event': 'NEWS_CREATED',
+                    'data': NewsReadSerializer(instance).data
+                }
+            )
+        except Exception as e:
+            raise ValidationError(str(e))
+
+    def perform_update(self, serializer):
+        try:
+            instance = serializer.save()
+            
+            # Отправка WebSocket уведомления
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                'news_updates',
+                {
+                    'type': 'news_update',
+                    'event': 'NEWS_UPDATED',
+                    'data': NewsReadSerializer(instance).data
+                }
+            )
+        except Exception as e:
+            raise ValidationError(str(e))
+
+    def perform_destroy(self, instance):
+        try:
+            news_id = instance.id
+            instance.delete()
+            
+            # Отправка WebSocket уведомления
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                'news_updates',
+                {
+                    'type': 'news_update',
+                    'event': 'NEWS_DELETED',
+                    'data': {'id': news_id}
+                }
+            )
         except Exception as e:
             raise ValidationError(str(e))
     
@@ -65,6 +125,18 @@ class NewsViewSet(viewsets.ModelViewSet):
         try:
             queryset = News.objects.filter(is_published=True).order_by('-created_at')[:3]
             serializer = self.get_serializer(queryset, many=True)
+
+            # Отправляем обновление через WebSocket
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                'news_updates',
+                {
+                    'type': 'news_update',
+                    'event': 'LATEST_NEWS',
+                    'data': serializer.data
+                }
+            )
+
             return Response(serializer.data)
         except Exception as e:
             raise ValidationError(f"Ошибка при получении последних новостей: {str(e)}")
@@ -114,7 +186,19 @@ class CommentViewSet(viewsets.ModelViewSet):
                 raise ValidationError("Не указана новость для комментария")
                 
             news = get_object_or_404(News, id=news_id)
-            serializer.save(author=self.request.user, news=news)
+            instance = serializer.save(author=self.request.user, news=news)
+
+            # Отправляем обновление через WebSocket
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'news_{news_id}_comments',
+                {
+                    'type': 'comment_update',
+                    'event': 'NEW_COMMENT',
+                    'data': CommentSerializer(instance).data
+                }
+            )
+
         except Exception as e:
             raise ValidationError(str(e))
     

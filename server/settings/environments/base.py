@@ -29,6 +29,10 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+# Настройки SMS.RU
+SMSRU_API_KEY = '0D3B2BC8-BB00-062A-3496-E40613279A32'  # Например, '12345678-ABCD-4321-5678-9876543210'
+SMSRU_SENDER = 'VITS'  # Имя отправителя (должно быть заранее зарегистрировано в sms.ru)
+
 # Настройки для Django REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  # Схема для автоматической генерации API-документации
@@ -85,6 +89,17 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,                                # Отключение схемы в ответах API
 }
 
+# Настройки Channels
+ASGI_APPLICATION = 'server.routing.application'
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
@@ -93,12 +108,14 @@ GROUP_SERVICE_URL = 'http://127.0.0.1:8000'  # или ваш URL
 SERVICE_AUTH_TOKEN = 'dev-internal-token'  # Общий для всех внутренних сервисов
 
 INSTALLED_APPS = [
+    'debug_toolbar',
     'phonenumber_field',
     'django_filters',
     'server.apps.proftesting',
     'server.apps.perscalendar',
     'server.apps.directions',
     'server.apps.news',
+    'channels',
     'corsheaders',
     'server.apps.virtmuseum',
     'rest_framework',
@@ -116,6 +133,7 @@ INSTALLED_APPS = [
 PHONENUMBER_DEFAULT_REGION = 'RU'
 
 MIDDLEWARE = [
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -233,3 +251,22 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",  # Теперь Redis в Docker!
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+    }
+}
+
+# Время жизни кеша по умолчанию (в секундах)
+CACHE_TTL = 60 * 0.1  # 1 минут
+
+INTERNAL_IPS = ['127.0.0.1']
+
+DEBUG_TOOLBAR_CONFIG = {
+    'SHOW_TOOLBAR_CALLBACK': lambda request: True,  # Принудительно показывать панель
+}
