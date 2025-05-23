@@ -1,6 +1,11 @@
 from rest_framework import views, status, viewsets, generics
-from .models import Group, User, PhoneVerification, PhoneConfirmation
-from .serializers import UserSerializer, GroupSerializer, AuthorizationSerializer, PhoneLoginSerializer, PhoneVerifySerializer, RegisterInitSerializer, RegisterConfirmSerializer
+from .models import Group, User, PhoneVerification, PhoneConfirmation, Appeal, AppealResponse
+from .serializers import (
+    UserSerializer, GroupSerializer, AuthorizationSerializer, 
+    PhoneLoginSerializer, PhoneVerifySerializer, RegisterInitSerializer, 
+    RegisterConfirmSerializer, AppealSerializer, AppealResponseSerializer,
+    NotificationSerializer
+)
 from rest_framework.views import APIView
 from .utils import generate_confirmation_token, confirm_token
 from django.conf import settings
@@ -43,30 +48,6 @@ class UserView(viewsets.ModelViewSet):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 
-# class RegisterView(views.APIView):
-#     def post(self, request):
-#         serializer = RegisterSerializer(data=request.data)
-#         if serializer.is_valid():
-#             user = serializer.save()
-            
-#             # Генерируем код подтверждения
-#             code = str(random.randint(100000, 999999))
-#             PhoneVerification.objects.create(
-#                 user=user,
-#                 code=code,
-#                 is_used=False
-#             )
-            
-#             # В реальном приложении здесь будет отправка SMS
-#             print(f"Код подтверждения для {user.phone}: {code}")
-            
-#             return Response({
-#                 "message": "Регистрация успешна. Подтвердите телефон.",
-#                 "username": user.username,
-#                 "phone": str(user.phone)
-#             }, status=status.HTTP_201_CREATED)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 class RegisterInitView(views.APIView):
     def post(self, request):
         serializer = RegisterInitSerializer(data=request.data)
@@ -93,6 +74,30 @@ class RegisterInitView(views.APIView):
             
             # В реальном приложении здесь отправка SMS
             print(f"Код подтверждения для {data['phone']}: {code}")
+
+            # # Форматируем номер телефона для Textbelt (международный формат)
+            # phone_number = f"+7{data['phone'][1:]}"  # Преобразуем 79536428046 в +79536428046
+            
+            # # Отправка SMS через Textbelt
+            # try:
+            #     resp = requests.post(
+            #         'https://textbelt.com/text',
+            #         {
+            #             'phone': phone_number,
+            #             'message': f'Ваш код подтверждения: {code}',
+            #             'key': 'textbelt',
+            #         },
+            #         timeout=10  # Таймаут 10 секунд
+            #     )
+            #     resp_data = resp.json()
+            #     print(f"Ответ от Textbelt: {resp_data}")
+                
+            #     if not resp_data.get('success'):
+            #         print(f"Ошибка отправки SMS: {resp_data.get('error')}")
+            #         # В случае ошибки продолжаем работу, но логируем проблему
+            # except Exception as e:
+            #     print(f"Ошибка при отправке запроса к Textbelt: {str(e)}")
+            #     # Продолжаем работу даже при ошибке отправки SMS
             
             return Response({
                 "status": "success",
@@ -155,19 +160,6 @@ class AuthorizationView(views.APIView):
                 'phone': str(user.phone)
             })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-# class AuthorizationView(APIView):
-#     def post(self, request, *args, **kwargs):
-#         serializer = AuthorizationSerializer(data=request.data, context={'request': request})
-#         if serializer.is_valid():
-#             user = serializer.validated_data['user']
-#             from rest_framework_simplejwt.tokens import RefreshToken
-#             refresh = RefreshToken.for_user(user)
-#             return Response({
-#                 'refresh': str(refresh),
-#                 'access': str(refresh.access_token),
-#             }, status=status.HTTP_200_OK)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -235,29 +227,6 @@ class PhoneLoginView(APIView):
             })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# class SendVerificationCodeView(APIView):
-#     def post(self, request):
-#         phone = request.data.get('phone')
-#         if not phone:
-#             return Response({"error": "Phone required"}, status=status.HTTP_400_BAD_REQUEST)
-        
-#         try:
-#             user = User.objects.get(phone=phone)
-#         except User.DoesNotExist:
-#             return Response({"error": "Пользователь не найден"}, status=status.HTTP_404_NOT_FOUND)
-        
-#         code = str(random.randint(100000, 999999))
-#         PhoneVerification.objects.create(
-#             user=user,
-#             code=code,
-#             is_used=False
-#         )
-        
-#         # В режиме разработки выводим код в консоль
-#         print(f"\nКод подтверждения для {phone}: {code}\n")
-        
-#         return Response({"message": "Код отправлен"})
-
 class SendVerificationCodeView(APIView):
     def post(self, request):
         phone = request.data.get('phone')
@@ -267,8 +236,8 @@ class SendVerificationCodeView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Удаляем все нецифровые символы (для совместимости с API)
-        phone = ''.join(filter(str.isdigit, phone))
+        # Удаляем все нецифровые символы и добавляем + в начале
+        phone = '+' + ''.join(filter(str.isdigit, phone))
 
         try:
             user = User.objects.get(phone=phone)
@@ -308,28 +277,26 @@ class SendVerificationCodeView(APIView):
                 status=status.HTTP_200_OK
             )
 
-        # Отправляем SMS через sms.ru
-        smsru_url = "https://sms.ru/sms/send"
-        params = {
-            "api_id": settings.SMSRU_API_KEY,
-            "to": phone,
-            "msg": f"{code} - ваш код для входа в MyApp",
-            "json": 1,
-            "from": settings.SMSRU_SENDER
-        }
-
+        # Отправляем SMS через Textbelt
         try:
-            response = requests.get(smsru_url, params=params)
+            response = requests.post(
+                'https://textbelt.com/text',
+                {
+                    'phone': phone,
+                    'message': f'Ваш код подтверждения: {code}',
+                    'key': 'textbelt'  # Бесплатный ключ (лимит 1 SMS/день)
+                }
+            )
             data = response.json()
 
-            if data.get("status") == "OK":
+            if data.get('success'):
                 return Response(
                     {"message": "Код отправлен на ваш телефон"},
                     status=status.HTTP_200_OK
                 )
             else:
                 return Response(
-                    {"error": f"Ошибка SMS.RU: {data.get('status_text', 'Unknown error')}"},
+                    {"error": f"Ошибка Textbelt: {data.get('error', 'Unknown error')}"},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
 
@@ -357,3 +324,78 @@ class VerifyPhoneView(APIView):
             
             return Response({"message": "Телефон успешно подтвержден"})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class AppealViewSet(viewsets.ModelViewSet):
+    queryset = Appeal.objects.all()
+    serializer_class = AppealSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        user = self.request.user
+        if user.role in ['admin', 'teacher']:
+            return Appeal.objects.all()
+        return Appeal.objects.filter(user=user)
+    
+    def perform_create(self, serializer):
+        appeal = serializer.save(user=self.request.user)
+        # Создаем уведомление для администраторов
+        admins = User.objects.filter(role='admin')
+        for admin in admins:
+            Notification.objects.create(
+                user=admin,
+                appeal=appeal,
+                notification_type='appeal_created',
+                message=f'Новое обращение от {self.request.user.username}: {appeal.title}'
+            )
+
+class AppealResponseViewSet(viewsets.ModelViewSet):
+    queryset = AppealResponse.objects.all()
+    serializer_class = AppealResponseSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        user = self.request.user
+        if user.role in ['admin', 'teacher']:
+            return AppealResponse.objects.all()
+        return AppealResponse.objects.filter(appeal__user=user)
+    
+    def perform_create(self, serializer):
+        response = serializer.save(admin=self.request.user)
+        appeal = response.appeal
+        
+        # Обновляем статус обращения, если это первый ответ
+        if appeal.status == 'new':
+            appeal.status = 'in_progress'
+            appeal.save()
+        
+        # Создаем уведомление для пользователя
+        Notification.objects.create(
+            user=appeal.user,
+            appeal=appeal,
+            notification_type='appeal_response',
+            message=f'Получен ответ на ваше обращение "{appeal.title}"'
+        )
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ['get', 'patch', 'head', 'options']
+    
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user)
+    
+    @action(detail=True, methods=['patch'])
+    def mark_as_read(self, request, pk=None):
+        notification = self.get_object()
+        notification.is_read = True
+        notification.save()
+        return Response({'status': 'marked as read'})
+    
+    @action(detail=False, methods=['get'])
+    def unread(self, request):
+        unread_notifications = Notification.objects.filter(
+            user=request.user,
+            is_read=False
+        )
+        serializer = self.get_serializer(unread_notifications, many=True)
+        return Response(serializer.data)

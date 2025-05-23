@@ -5,7 +5,20 @@ from django.conf.urls.static import static
 from rest_framework import routers
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from server.apps.users.views import GroupView, UserViewSet, UserView, AuthorizationView, PhoneLoginView, SendVerificationCodeView, VerifyPhoneView, RegisterInitView, RegisterConfirmView #представления из сервиса для работы с пользователями
+from server.apps.users.views import (
+    GroupView, 
+    UserViewSet, 
+    UserView, 
+    AuthorizationView, 
+    PhoneLoginView, 
+    SendVerificationCodeView, 
+    VerifyPhoneView,
+    RegisterInitView, 
+    RegisterConfirmView,
+    AppealViewSet,
+    AppealResponseViewSet,
+    NotificationViewSet #представления из сервиса для работы с пользователями
+)
 from server.apps.virtmuseum.views import AudienceViewSet, AudienceImageViewSet, CharacteristicViewSet #представления из сериса виртуального музея
 from server.apps.news.views import (
     CategoryViewSet, TagViewSet, NewsViewSet, 
@@ -22,6 +35,7 @@ from server.apps.proftesting.views import (
     CompleteTestView,
     TestResultView
 )
+from server.apps.Content.views import BannerViewSet, AchievementViewSet, ReviewViewSet
 
 router = routers.DefaultRouter()
 router.register(r'api/groups', GroupView, basename='group') #получить список групп
@@ -38,6 +52,12 @@ router.register(r'api/audience-images', AudienceImageViewSet, basename='audience
 router.register(r'api/characteristics', CharacteristicViewSet, basename='characteristics') #получить характеристики аудитории
 router.register(r'api/departments', DepartmentViewSet, basename='departments') #получить направления обучения
 router.register(r'api/programs', ProgramViewSet, basename='programs') #получить программы обучения
+router.register(r'api/appeals', AppealViewSet, basename='appeal')
+router.register(r'api/appeal-responses', AppealResponseViewSet, basename='appeal-response')
+router.register(r'api/notifications', NotificationViewSet, basename='notification')
+router.register(r'api/banners', BannerViewSet, basename='banner')
+router.register(r'api/achievements', AchievementViewSet, basename='achievement')
+router.register(r'api/reviews', ReviewViewSet, basename='review')
 
 urlpatterns = [
     path('admin/', admin.site.urls),

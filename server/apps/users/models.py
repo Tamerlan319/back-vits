@@ -101,3 +101,66 @@ class Teacher(models.Model):
     class Meta:
         verbose_name = "Преподаватель"
         verbose_name_plural = "Преподаватели"
+
+class Appeal(models.Model):
+    STATUS_CHOICES = [
+        ('new', 'Новое'),
+        ('in_progress', 'В обработке'),
+        ('resolved', 'Решено'),
+        ('rejected', 'Отклонено'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='appeals')
+    title = models.CharField(max_length=255, verbose_name="Тема обращения")
+    message = models.TextField(verbose_name="Текст обращения")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='new')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Обращение"
+        verbose_name_plural = "Обращения"
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.title} ({self.get_status_display()})"
+
+class AppealResponse(models.Model):
+    appeal = models.ForeignKey(Appeal, on_delete=models.CASCADE, related_name='responses')
+    admin = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    message = models.TextField(verbose_name="Текст ответа")
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = "Ответ на обращение"
+        verbose_name_plural = "Ответы на обращения"
+    
+    def __str__(self):
+        return f"Ответ на {self.appeal.title}"
+
+class Notification(models.Model):
+    TYPE_CHOICES = [
+        ('appeal_created', 'Создано обращение'),
+        ('appeal_response', 'Ответ на обращение'),
+        ('status_changed', 'Изменение статуса'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    appeal = models.ForeignKey(Appeal, on_delete=models.CASCADE, null=True, blank=True)
+    notification_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = "Уведомление"
+        verbose_name_plural = "Уведомления"
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.get_notification_type_display()} для {self.user.username}"
+
+class AppealAttachment(models.Model):
+    appeal = models.ForeignKey(Appeal, on_delete=models.CASCADE, related_name='attachments')
+    file = models.FileField(upload_to='appeals/attachments/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)

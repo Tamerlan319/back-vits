@@ -17,6 +17,7 @@ import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
+TEXTBELT_API_KEY = 'e6a38bb90671d42125a40bf555da81c5315ca7aabUUwHB9Ff83lVU8sJzGc0T5Qf'  # Для платной версии
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -77,7 +78,7 @@ SIMPLE_JWT = {
     'JTI_CLAIM': 'jti',
 
     'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
-    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
+    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=60),
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
 
@@ -108,6 +109,7 @@ GROUP_SERVICE_URL = 'http://127.0.0.1:8000'  # или ваш URL
 SERVICE_AUTH_TOKEN = 'dev-internal-token'  # Общий для всех внутренних сервисов
 
 INSTALLED_APPS = [
+    'server.apps.Content',
     'debug_toolbar',
     'phonenumber_field',
     'django_filters',
@@ -259,6 +261,7 @@ CACHES = {
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
+        "KEY_PREFIX": "events_service"
     }
 }
 
