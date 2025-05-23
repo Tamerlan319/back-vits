@@ -13,7 +13,7 @@ class BannerViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
             return [permissions.AllowAny()]
-        return [IsAdmin()]  # Явное создание экземпляра
+        return [IsAdmin()]
     
     def perform_create(self, serializer):
         serializer.save()
@@ -35,7 +35,7 @@ class BannerViewSet(viewsets.ModelViewSet):
 class AchievementViewSet(viewsets.ModelViewSet):
     queryset = Achievement.objects.all().order_by('-created_at')
     serializer_class = AchievementSerializer
-    permission_classes = [IsAdmin]  # Только админы
+    permission_classes = [IsAdmin]
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
@@ -48,7 +48,7 @@ class AchievementViewSet(viewsets.ModelViewSet):
 class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
     queryset = Review.objects.all().order_by('-created_at')
-    permission_classes = [IsAdmin]  # Только админы
+    permission_classes = [IsAdmin]
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
