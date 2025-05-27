@@ -10,7 +10,11 @@ import phonenumbers
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('username', 'email', 'first_name', 'last_name', 'middle_name', 'role', 'groups')
+        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'phone', 'is_active']
+        
+class VKAuthSerializer(serializers.Serializer):
+    code = serializers.CharField(required=True)
+    state = serializers.CharField(required=False)
 
 class GroupSerializer(serializers.ModelSerializer):
     class Meta:

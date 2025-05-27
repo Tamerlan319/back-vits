@@ -4,7 +4,7 @@ from .serializers import (
     UserSerializer, GroupSerializer, AuthorizationSerializer, 
     PhoneLoginSerializer, PhoneVerifySerializer, RegisterInitSerializer, 
     RegisterConfirmSerializer, AppealSerializer, AppealResponseSerializer,
-    NotificationSerializer
+    NotificationSerializer, VKAuthSerializer
 )
 from rest_framework.views import APIView
 from .utils import generate_confirmation_token, confirm_token
@@ -20,6 +20,160 @@ from rest_framework.permissions import IsAuthenticated
 from datetime import timedelta
 from django.utils import timezone
 import requests
+from urllib.parse import urlencode
+import secrets
+import base64
+import hashlib
+from django.shortcuts import redirect
+
+def generate_pkce():
+    """Генерация code_verifier и code_challenge для PKCE"""
+    code_verifier = secrets.token_urlsafe(96)
+    code_verifier = ''.join([c for c in code_verifier if c.isalnum() or c in {'-', '.', '_', '~'}])[:128]
+    
+    if len(code_verifier) < 43:
+        code_verifier += secrets.token_urlsafe(43 - len(code_verifier))
+    
+    sha256 = hashlib.sha256(code_verifier.encode('ascii')).digest()
+    code_challenge = base64.urlsafe_b64encode(sha256).decode('ascii').replace('=', '')
+    
+    return code_verifier, code_challenge
+
+class VKAuthInitView(APIView):
+    def get(self, request):
+        """Инициирует авторизацию через VK (перенаправление)"""
+        try:
+            code_verifier, code_challenge = generate_pkce()
+            state = secrets.token_urlsafe(32)
+            
+            request.session['vk_code_verifier'] = code_verifier
+            request.session['vk_state'] = state
+            
+            params = {
+                'client_id': settings.VK_CLIENT_ID,
+                'redirect_uri': settings.VK_REDIRECT_URI,
+                'response_type': 'code',
+                'scope': settings.VK_SCOPE,
+                'state': state,
+                'code_challenge': code_challenge,
+                'code_challenge_method': 'S256',
+                'v': settings.VK_API_VERSION,
+            }
+            
+            auth_url = f"{settings.VK_AUTH_URL}?{urlencode(params)}"
+            return redirect(auth_url)
+            
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class VKAuthCallbackView(APIView):
+    def get(self, request):
+        """Обрабатывает callback от VK"""
+        code = request.GET.get('code')
+        error = request.GET.get('error')
+        state = request.GET.get('state')
+        
+        if error:
+            return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not code:
+            return Response({"error": "Authorization code not provided"}, 
+                          status=status.HTTP_400_BAD_REQUEST)
+        
+        # Проверяем state
+        saved_state = request.session.get('vk_state')
+        if state != saved_state:
+            return Response({"error": "Invalid state parameter"}, 
+                          status=status.HTTP_400_BAD_REQUEST)
+        
+        code_verifier = request.session.get('vk_code_verifier')
+        if not code_verifier:
+            return Response({"error": "Code verifier not found"}, 
+                          status=status.HTTP_400_BAD_REQUEST)
+        
+        device_id = request.GET.get('device_id', '')
+        
+        # Получаем токен от VK
+        token_data = {
+            'grant_type': 'authorization_code',
+            'client_id': settings.VK_CLIENT_ID,
+            'redirect_uri': settings.VK_REDIRECT_URI,
+            'code': code,
+            'code_verifier': code_verifier,
+            'device_id': device_id
+        }
+        
+        try:
+            # Отправляем запрос к VK API
+            response = requests.post(
+                "https://id.vk.com/oauth2/auth",
+                data=token_data,
+                headers={'Content-Type': 'application/x-www-form-urlencoded'}
+            )
+            
+            # Проверяем статус ответа
+            if response.status_code != 200:
+                error_msg = response.json().get('error_description', 'VK API error')
+                return Response({"error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
+            
+            token_info = response.json()
+            
+            # Создаем или получаем пользователя
+            user, created = User.objects.get_or_create(
+                vk_id=token_info['user_id'],
+                defaults={
+                    'username': f"vk_{token_info['user_id']}",
+                    'is_active': True,
+                    'phone_verified': True
+                }
+            )
+            
+            # Обновляем данные пользователя из VK
+            if 'access_token' in token_info:
+                try:
+                    vk_response = requests.get(
+                        "https://api.vk.com/method/account.getProfileInfo",
+                        params={
+                            'access_token': token_info['access_token'],
+                            'v': settings.VK_API_VERSION,
+                            'fields': 'first_name,last_name,phone,screen_name'
+                        }
+                    )
+                    print(token_info['access_token'])
+                    if vk_response.status_code == 200:
+                        vk_data = vk_response.json().get('response', [{}])
+                        if vk_data:
+                            update_fields = {}
+                            if vk_data.get('first_name'):
+                                user.first_name = vk_data['first_name']
+                            if vk_data.get('last_name'):
+                                user.last_name = vk_data['last_name']
+                            if vk_data.get('phone'):
+                                user.phone = vk_data['phone']
+                            if vk_data.get('screen_name'):
+                                user.username = vk_data['screen_name'] 
+                            user.role = "guest"
+                            user.save()
+                except Exception as e:
+                    # Логируем ошибку, но не прерываем процесс
+                    print(f"Error getting user info from VK: {str(e)}")
+            
+            # Генерируем JWT токены
+            refresh = RefreshToken.for_user(user)
+            
+            return Response({
+                'status': 'success',
+                'access_token': str(refresh.access_token),
+                'refresh_token': str(refresh),
+                'user': UserSerializer(user).data
+            })
+            
+        except requests.exceptions.RequestException as e:
+            return Response({"error": f"VK API request failed: {str(e)}"},
+                          status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except Exception as e:
+            return Response({"error": f"Internal server error: {str(e)}"},
+                          status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class GroupView(viewsets.ModelViewSet):
     queryset = Group.objects.all()
@@ -74,30 +228,6 @@ class RegisterInitView(views.APIView):
             
             # В реальном приложении здесь отправка SMS
             print(f"Код подтверждения для {data['phone']}: {code}")
-
-            # # Форматируем номер телефона для Textbelt (международный формат)
-            # phone_number = f"+7{data['phone'][1:]}"  # Преобразуем 79536428046 в +79536428046
-            
-            # # Отправка SMS через Textbelt
-            # try:
-            #     resp = requests.post(
-            #         'https://textbelt.com/text',
-            #         {
-            #             'phone': phone_number,
-            #             'message': f'Ваш код подтверждения: {code}',
-            #             'key': 'textbelt',
-            #         },
-            #         timeout=10  # Таймаут 10 секунд
-            #     )
-            #     resp_data = resp.json()
-            #     print(f"Ответ от Textbelt: {resp_data}")
-                
-            #     if not resp_data.get('success'):
-            #         print(f"Ошибка отправки SMS: {resp_data.get('error')}")
-            #         # В случае ошибки продолжаем работу, но логируем проблему
-            # except Exception as e:
-            #     print(f"Ошибка при отправке запроса к Textbelt: {str(e)}")
-            #     # Продолжаем работу даже при ошибке отправки SMS
             
             return Response({
                 "status": "success",
@@ -160,58 +290,6 @@ class AuthorizationView(views.APIView):
                 'phone': str(user.phone)
             })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-
-    @action(detail=False, methods=['post'], serializer_class=RegisterInitSerializer)
-    def register(self, request):
-        """
-        Регистрация нового пользователя.
-        """
-        serializer = RegisterSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-
-            # Генерация токена подтверждения
-            token = generate_confirmation_token(user.email)
-            
-            # Создание ссылки для подтверждения
-            confirmation_url = request.build_absolute_uri(
-                reverse('confirm_email', args=[token]))
-            
-            # Отправка письма
-            send_mail(
-                'Подтвердите ваш email',
-                f'Перейдите по ссылке для подтверждения: {confirmation_url}',
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-                fail_silently=False,
-            )
-
-            return Response({"message": "Письмо с подтверждением отправлено на ваш email."}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=False, methods=['get'])
-    def confirm_email(self, request, token):
-        """
-        Подтверждение email.
-        """
-        email = confirm_token(token)
-        if not email:
-            return Response({"error": "Недействительная или истекшая ссылка подтверждения."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        user = User.objects.get(email=email)
-        
-        if user.is_active:
-            return Response({"message": "Email уже подтвержден."}, status=status.HTTP_200_OK)
-        
-        # Активируем пользователя
-        user.is_active = True
-        user.save()
-        
-        return Response({"message": "Email успешно подтвержден."}, status=status.HTTP_200_OK)
 
 class PhoneLoginView(APIView):
     def post(self, request):

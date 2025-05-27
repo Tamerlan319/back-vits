@@ -35,6 +35,7 @@ class User(AbstractUser, PermissionsMixin):
     phone_verified = models.BooleanField(default=False, verbose_name="Телефон подтвержден")
     verification_code = models.CharField(max_length=6, null=True, blank=True)
     code_sent_at = models.DateTimeField(null=True, blank=True)
+    vk_id = models.BigIntegerField(unique=True, null=True, blank=True)
 
     # Делаем username обязательным, но аутентификация будет по телефону
     USERNAME_FIELD = 'phone'  # Основное поле для аутентификации

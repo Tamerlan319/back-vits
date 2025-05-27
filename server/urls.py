@@ -7,7 +7,6 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from server.apps.users.views import (
     GroupView, 
-    UserViewSet, 
     UserView, 
     AuthorizationView, 
     PhoneLoginView, 
@@ -17,7 +16,8 @@ from server.apps.users.views import (
     RegisterConfirmView,
     AppealViewSet,
     AppealResponseViewSet,
-    NotificationViewSet #представления из сервиса для работы с пользователями
+    NotificationViewSet, #представления из сервиса для работы с пользователями
+    VKAuthInitView, VKAuthCallbackView
 )
 from server.apps.virtmuseum.views import AudienceViewSet, AudienceImageViewSet, CharacteristicViewSet #представления из сериса виртуального музея
 from server.apps.news.views import (
@@ -78,7 +78,9 @@ urlpatterns = [
     path('api/start-test/', StartTestView.as_view(), name='start-test'),
     path('api/sessions/<int:session_id>/answers/', SubmitAnswerView.as_view(), name='submit-answers'),
     path('api/sessions/<int:session_id>/complete/', CompleteTestView.as_view(), name='complete-test'),
-    path('api/results/<int:session_id>/', TestResultView.as_view(), name='test-result'),
+    path('api/results/<int:session_id>/', TestResultView.as_view(), name='test-result'),\
+    path('auth/vk/init/', VKAuthInitView.as_view(), name='vk-auth-init'),
+    path('auth/vk/callback/', VKAuthCallbackView.as_view(), name='vk-auth-callback'),
     path('__debug__/', include('debug_toolbar.urls')),  # дебаг для кеширования
 ]
 

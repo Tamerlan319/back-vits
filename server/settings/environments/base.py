@@ -14,6 +14,15 @@ from pathlib import Path
 from datetime import timedelta
 import os
 
+# VK OAuth 2.1
+VK_CLIENT_ID = '53621398'
+VK_CLIENT_SECRET = 'd99d7316d99d7316d99d731615daaf4180dd99dd99d7316b1ae015d6901a7ff146ec7fe'
+VK_REDIRECT_URI = 'https://5ea3f2059975fec922d8d6d9ba9d8033.serveo.net/auth/vk/callback/'
+VK_API_VERSION = '5.199'
+VK_AUTH_URL = "https://id.vk.com/authorize"
+VK_TOKEN_URL = "https://id.vk.com/oauth2/auth"  # Ключевое изменение!
+VK_SCOPE = 'email,phone'  # Только необходимые scope
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 

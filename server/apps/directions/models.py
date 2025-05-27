@@ -91,7 +91,6 @@ class Program(models.Model):
         verbose_name="Кем можно работать",
         validators=[MinLengthValidator(20)]
     )
-    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True, verbose_name="Активна")
     
