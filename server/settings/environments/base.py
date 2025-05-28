@@ -17,8 +17,8 @@ import os
 # Настройки для Yandex Object Storage
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
-AWS_ACCESS_KEY_ID = 'YCAJEsXZW5hb-D0ezzq8z1in-' # Из IAM-аккаунта
-AWS_SECRET_ACCESS_KEY = 'YCPJ5w6vwQIX_OhDd0i5UsmTiAixbfHRnhY337Zw' # Из IAM-аккаунта
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID') # Из IAM-аккаунта
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY') # Из IAM-аккаунта
 AWS_STORAGE_BUCKET_NAME = 'vits'
 AWS_S3_ENDPOINT_URL = 'https://storage.yandexcloud.net'
 AWS_S3_REGION_NAME = 'ru-central1'
@@ -28,7 +28,7 @@ AWS_S3_SIGNATURE_VERSION = 's3v4'
 
 # VK OAuth 2.1https://www.pythonanywhere.com/user/Tamik327/files/home/Tamik327/back-vits/server/settings
 VK_CLIENT_ID = '53621398'
-VK_CLIENT_SECRET = 'd99d7316d99d7316d99d731615daaf4180dd99dd99d7316b1ae015d6901a7ff146ec7fe'
+VK_CLIENT_SECRET = os.getenv('VK_CLIENT_SECRET')
 VK_REDIRECT_URI = 'https://tamik327.pythonanywhere.com/auth/vk/callback/'
 VK_API_VERSION = '5.199'
 VK_AUTH_URL = "https://id.vk.com/authorize"
@@ -39,13 +39,13 @@ FRONT_VK_CALLBACK = 'https://tamik.surge.sh/'
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-TEXTBELT_API_KEY = 'e6a38bb90671d42125a40bf555da81c5315ca7aabUUwHB9Ff83lVU8sJzGc0T5Qf'  # Для платной версии
+TEXTBELT_API_KEY = os.getenv('TEXTBELT_API_KEY')  # Для платной версии
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-3zyo8&mht8vs9q-1dcfc74zzuw55_zsbudgcr4^k2m4g1pnz(a'
+SECRET_KEY = os.getenv('SECRET_KEY ')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -53,7 +53,7 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 # Настройки SMS.RU
-SMSRU_API_KEY = '0D3B2BC8-BB00-062A-3496-E40613279A32'  # Например, '12345678-ABCD-4321-5678-9876543210'
+SMSRU_API_KEY = os.getenv('SMSRU_API_KEY')  # Например, '12345678-ABCD-4321-5678-9876543210'
 SMSRU_SENDER = 'VITS'  # Имя отправителя (должно быть заранее зарегистрировано в sms.ru)
 
 # Настройки для Django REST Framework

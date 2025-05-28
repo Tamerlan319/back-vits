@@ -1,7 +1,1 @@
-# Set-Content -Path .\.gitignore -Value @"
-# venv/
-# __pycache__/
-# *.pyc
-# "@
-# #server/settings/environments/base.py
-# #server/settings/common.py
+.env
