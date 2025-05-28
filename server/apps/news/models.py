@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from server.settings.environments.storage_backends import YandexMediaStorage
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True, verbose_name="Название категории")
@@ -25,7 +26,13 @@ class Tag(models.Model):
 class News(models.Model):
     title = models.CharField(max_length=200, verbose_name="Заголовок новости")
     content = models.TextField(verbose_name="Содержание новости")
-    image = models.ImageField(upload_to='news_images/', blank=True, null=True, verbose_name="Изображение")
+    image = models.ImageField(
+        upload_to='news_images/',
+        storage=YandexMediaStorage(),
+        blank=True,
+        null=True,
+        verbose_name="Изображение"
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Дата обновления")
     is_published = models.BooleanField(default=False, verbose_name="Опубликовано")
@@ -49,7 +56,10 @@ class News(models.Model):
 
 class NewsImage(models.Model):
     news = models.ForeignKey(News, related_name='images', on_delete=models.CASCADE)
-    image = models.ImageField(upload_to='news_images/')
+    image = models.ImageField(
+        upload_to='news_images/',
+        storage=YandexMediaStorage()  # или оставьте DEFAULT_FILE_STORAGE
+    )
 
     def __str__(self):
         return f"Image for {self.news.title}"

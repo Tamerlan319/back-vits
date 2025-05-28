@@ -1,8 +1,12 @@
 from django.db import models
 from django.conf import settings
+from server.settings.environments.storage_backends import YandexMediaStorage
 
 class Banner(models.Model):
-    image = models.ImageField(upload_to='banners/')
+    image = models.ImageField(
+        upload_to='banners/',
+        storage=YandexMediaStorage()
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     order = models.PositiveIntegerField(default=0)  # Добавлено поле для сортировки
 
@@ -16,7 +20,10 @@ class Banner(models.Model):
 
 class Achievement(models.Model):
     title = models.CharField(max_length=200)
-    image = models.ImageField(upload_to='achievements/')
+    image = models.ImageField(
+        upload_to='achievements/',
+        storage=YandexMediaStorage()
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -32,6 +39,12 @@ class Review(models.Model):
     course = models.CharField(max_length=150)
     text = models.TextField()
     image = models.ImageField(upload_to='reviews/', blank=True, null=True)
+    image = models.ImageField(
+        upload_to='reviews/',
+        storage=YandexMediaStorage(),  # или оставьте DEFAULT_FILE_STORAGE
+        blank=True, 
+        null=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

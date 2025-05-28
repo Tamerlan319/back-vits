@@ -14,6 +14,18 @@ from pathlib import Path
 from datetime import timedelta
 import os
 
+# Настройки для Yandex Object Storage
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+
+AWS_ACCESS_KEY_ID = 'YCAJEsXZW5hb-D0ezzq8z1in-' # Из IAM-аккаунта
+AWS_SECRET_ACCESS_KEY = 'YCPJ5w6vwQIX_OhDd0i5UsmTiAixbfHRnhY337Zw' # Из IAM-аккаунта
+AWS_STORAGE_BUCKET_NAME = 'vits'
+AWS_S3_ENDPOINT_URL = 'https://storage.yandexcloud.net'
+AWS_S3_REGION_NAME = 'ru-central1'
+AWS_DEFAULT_ACL = 'public-read'  # Для публичного доступа
+AWS_QUERYSTRING_AUTH = False     # Отключить подпись URL
+AWS_S3_SIGNATURE_VERSION = 's3v4'
+
 # VK OAuth 2.1https://www.pythonanywhere.com/user/Tamik327/files/home/Tamik327/back-vits/server/settings
 VK_CLIENT_ID = '53621398'
 VK_CLIENT_SECRET = 'd99d7316d99d7316d99d731615daaf4180dd99dd99d7316b1ae015d6901a7ff146ec7fe'

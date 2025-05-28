@@ -1,4 +1,5 @@
 from django.db import models
+from server.settings.environments.storage_backends import YandexMediaStorage
 
 class Audience(models.Model):
     name = models.CharField(max_length=255, verbose_name="Название аудитории")
@@ -29,7 +30,11 @@ class Characteristic(models.Model):
 
 class AudienceImage(models.Model):
     audience = models.ForeignKey(Audience, on_delete=models.CASCADE, related_name='images', verbose_name="Аудитория")
-    image = models.ImageField(upload_to='audience_images/', verbose_name="Изображение")
+    image = models.ImageField(
+        upload_to='audience_images/',
+        storage=YandexMediaStorage(),  # или оставьте DEFAULT_FILE_STORAGE
+        verbose_name="Изображение"
+    )
     description = models.CharField(max_length=255, blank=True, null=True, verbose_name="Описание изображения")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Дата обновления")
