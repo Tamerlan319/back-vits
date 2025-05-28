@@ -1,5 +1,5 @@
 from django.db import models
-from django.core.validators import MinLengthValidator, MaxLengthValidator, FileExtensionValidator 
+from django.core.validators import MinLengthValidator, MaxLengthValidator, FileExtensionValidator
 
 class Department(models.Model):
     """Кафедры института"""
@@ -11,7 +11,7 @@ class Department(models.Model):
             MaxLengthValidator(255, "Название слишком длинное")
         ]
     )
-    
+
     def __str__(self):
         return self.name
 
@@ -33,7 +33,7 @@ class EducationLevel(models.Model):
         unique=True,
         validators=[MinLengthValidator(2)]
     )
-    
+
     def __str__(self):
         return f"{self.name} ({self.code})"
 
@@ -49,7 +49,7 @@ class Program(models.Model):
         ('PT', 'Очно-заочная'),
         ('DL', 'Заочная'),
     ]
-    
+
     department = models.ForeignKey(
         Department,
         on_delete=models.CASCADE,
@@ -91,9 +91,9 @@ class Program(models.Model):
         verbose_name="Кем можно работать",
         validators=[MinLengthValidator(20)]
     )
-    updated_at = models.DateTimeField(auto_now=True)
-    is_active = models.BooleanField(default=True, verbose_name="Активна")
-    
+    updated_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(null=True, default=True, verbose_name="Активна")
+
     def __str__(self):
         return f"{self.code} {self.program_name} ({self.get_form_display()})"
 
@@ -120,7 +120,7 @@ class PartnerCompany(models.Model):
         ]
     )
     website = models.URLField(blank=True, null=True)
-    
+
     def __str__(self):
         return self.name
 
@@ -145,8 +145,8 @@ class ProgramFeature(models.Model):
         verbose_name="Описание",
         validators=[MinLengthValidator(10)]
     )
-    order = models.PositiveIntegerField(default=0, verbose_name="Порядок")
-    
+    order = models.PositiveIntegerField(null=True, default=0, verbose_name="Порядок")
+
     def __str__(self):
         return f"{self.program}: {self.title}"
 

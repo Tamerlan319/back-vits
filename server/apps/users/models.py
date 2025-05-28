@@ -10,10 +10,10 @@ class PhoneConfirmation(models.Model):
     code = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)  # Оставляем только это определение
     registration_data = models.JSONField()  # Добавляем поле для хранения данных регистрации
-    
+
     def is_expired(self):
         return (timezone.now() - self.created_at) > timedelta(minutes=5)
-        
+
     class Meta:
         verbose_name = "Подтверждение телефона"
         verbose_name_plural = "Подтверждения телефонов"
@@ -31,7 +31,7 @@ class User(AbstractUser, PermissionsMixin):
     groups = models.ManyToManyField('Group', related_name='custom_user_groups', blank=True)
     user_permissions = models.ManyToManyField('auth.Permission', related_name='custom_user_permissions_set', blank=True)
     is_active = models.BooleanField(default=False)
-    phone = PhoneNumberField(region='RU', null=True, blank=True)
+    phone = PhoneNumberField(region='RU', null=False, blank=True, unique=True)
     phone_verified = models.BooleanField(default=False, verbose_name="Телефон подтвержден")
     verification_code = models.CharField(max_length=6, null=True, blank=True)
     code_sent_at = models.DateTimeField(null=True, blank=True)
@@ -42,9 +42,15 @@ class User(AbstractUser, PermissionsMixin):
     REQUIRED_FIELDS = ['username']  # Обязательные поля при создании superuser
 
     def save(self, *args, **kwargs):
-        if self.role in ['guest', 'teacher', 'admin', 'student'] and self.groups.exists():
-            raise ValidationError("Teachers and Admins cannot have groups.")
+        # Проверяем, новый ли это пользователь
+        is_new = self._state.adding
+
+        # Сначала сохраняем пользователя
         super().save(*args, **kwargs)
+
+        # Проверяем группы только для существующих пользователей
+        if not is_new and self.role in ['guest', 'teacher', 'admin', 'student'] and self.groups.exists():
+            raise ValidationError("Teachers and Admins cannot have groups.")
 
     class Meta:
         verbose_name = "Пользователь"
@@ -60,10 +66,10 @@ class PhoneVerification(models.Model):
     code = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
     is_used = models.BooleanField(default=False)
-    
+
     class Meta:
         ordering = ['-created_at']
-    
+
     def is_valid(self):
         """Проверяет, действителен ли код"""
         return not self.is_used and \
@@ -90,8 +96,8 @@ class Student(models.Model):
 
 class Teacher(models.Model):
     user = models.OneToOneField(
-        User, 
-        on_delete=models.CASCADE, 
+        User,
+        on_delete=models.CASCADE,
         primary_key=True,
         related_name='teacher_profile'
     )
@@ -110,19 +116,19 @@ class Appeal(models.Model):
         ('resolved', 'Решено'),
         ('rejected', 'Отклонено'),
     ]
-    
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='appeals')
     title = models.CharField(max_length=255, verbose_name="Тема обращения")
     message = models.TextField(verbose_name="Текст обращения")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='new')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         verbose_name = "Обращение"
         verbose_name_plural = "Обращения"
         ordering = ['-created_at']
-    
+
     def __str__(self):
         return f"{self.title} ({self.get_status_display()})"
 
@@ -131,11 +137,11 @@ class AppealResponse(models.Model):
     admin = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     message = models.TextField(verbose_name="Текст ответа")
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         verbose_name = "Ответ на обращение"
         verbose_name_plural = "Ответы на обращения"
-    
+
     def __str__(self):
         return f"Ответ на {self.appeal.title}"
 
@@ -145,19 +151,19 @@ class Notification(models.Model):
         ('appeal_response', 'Ответ на обращение'),
         ('status_changed', 'Изменение статуса'),
     ]
-    
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     appeal = models.ForeignKey(Appeal, on_delete=models.CASCADE, null=True, blank=True)
     notification_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
     message = models.TextField()
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         verbose_name = "Уведомление"
         verbose_name_plural = "Уведомления"
         ordering = ['-created_at']
-    
+
     def __str__(self):
         return f"{self.get_notification_type_display()} для {self.user.username}"
 

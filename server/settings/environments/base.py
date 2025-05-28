@@ -14,14 +14,15 @@ from pathlib import Path
 from datetime import timedelta
 import os
 
-# VK OAuth 2.1
+# VK OAuth 2.1https://www.pythonanywhere.com/user/Tamik327/files/home/Tamik327/back-vits/server/settings
 VK_CLIENT_ID = '53621398'
 VK_CLIENT_SECRET = 'd99d7316d99d7316d99d731615daaf4180dd99dd99d7316b1ae015d6901a7ff146ec7fe'
-VK_REDIRECT_URI = 'https://5ea3f2059975fec922d8d6d9ba9d8033.serveo.net/auth/vk/callback/'
+VK_REDIRECT_URI = 'https://tamik327.pythonanywhere.com/auth/vk/callback/'
 VK_API_VERSION = '5.199'
 VK_AUTH_URL = "https://id.vk.com/authorize"
 VK_TOKEN_URL = "https://id.vk.com/oauth2/auth"  # Ключевое изменение!
 VK_SCOPE = 'email,phone'  # Только необходимые scope
+FRONT_VK_CALLBACK = 'https://tamik.surge.sh/'
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -130,7 +131,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'server.apps.virtmuseum',
     'rest_framework',
-    'drf_spectacular', 
+    'drf_spectacular',
     'rest_framework_simplejwt',
     'server.apps.users',
     'django.contrib.admin',
@@ -206,8 +207,8 @@ AUTH_USER_MODEL = 'users.User'
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
-    'server.apps.users.backends.EmailBackend',
-    'server.apps.users.backends.PhoneBackend',  # Аутентификация по телефону
+    # 'server.apps.users.backends.EmailBackend',
+    # 'server.apps.users.backends.PhoneBackend',  # Аутентификация по телефону
 ]
 
 # Database

@@ -62,14 +62,14 @@ class ProgramSerializer(serializers.ModelSerializer):
     features = ProgramFeatureSerializer(many=True, read_only=True)
     form_display = serializers.CharField(source='get_form_display', read_only=True)
     career_opportunities_list = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Program
         fields = [
             'id', 'code', 'name', 'program_name', 'department', 'department_id',
             'level', 'level_id', 'form', 'form_display', 'description',
             'career_opportunities', 'career_opportunities_list', 'features',
-            'is_active', 'created_at', 'updated_at'
+            'is_active', 'updated_at'
         ]
         extra_kwargs = {
             'code': {'min_length': 2},
@@ -78,20 +78,20 @@ class ProgramSerializer(serializers.ModelSerializer):
             'description': {'min_length': 50},
             'career_opportunities': {'min_length': 20}
         }
-    
+
     def get_career_opportunities_list(self, obj):
         return [x.strip() for x in obj.career_opportunities.split('\n') if x.strip()]
-    
+
     def validate_code(self, value):
         if not value.isalnum():
             raise ValidationError("Код программы должен содержать только буквы и цифры")
         return value
-    
+
     def validate(self, data):
         if 'department' in data and 'level' in data:
             department = data['department']
             level = data['level']
-            
+
             if not department.programs.filter(level=level).exists():
                 raise ValidationError(
                     "Выбранная кафедра не предлагает программы на этом уровне образования"
@@ -102,10 +102,10 @@ class ProgramListSerializer(serializers.ModelSerializer):
     department = serializers.StringRelatedField()
     level = serializers.StringRelatedField()
     form_display = serializers.CharField(source='get_form_display')
-    
+
     class Meta:
         model = Program
         fields = [
-            'id', 'code', 'program_name', 'department', 'level', 
+            'id', 'code', 'program_name', 'department', 'level',
             'form_display', 'is_active'
         ]
