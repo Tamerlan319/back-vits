@@ -36,6 +36,7 @@ from server.apps.proftesting.views import (
     TestResultView
 )
 from server.apps.Content.views import BannerViewSet, AchievementViewSet, ReviewViewSet
+from server.apps.Application.views import ApplicationViewSet, ApplicationAttachmentViewSet, get_application_types
 
 router = routers.DefaultRouter()
 router.register(r'api/groups', GroupView, basename='group') #получить список групп
@@ -59,6 +60,8 @@ router.register(r'api/banners', BannerViewSet, basename='banner')
 router.register(r'api/achievements', AchievementViewSet, basename='achievement')
 router.register(r'api/reviews', ReviewViewSet, basename='review')
 router.register(r'api/events', EventViewSet, basename='events')
+router.register(r'api/applications', ApplicationViewSet, basename='application')
+router.register(r'api/application-attachments', ApplicationAttachmentViewSet, basename='application-attachment')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -83,6 +86,7 @@ urlpatterns = [
     path('auth/vk/init/', VKAuthInitView.as_view(), name='vk-auth-init'),
     path('auth/vk/callback/', VKAuthCallbackView.as_view(), name='vk-auth-callback'),
     path('__debug__/', include('debug_toolbar.urls')),  # дебаг для кеширования
+    path('api/application-types/', get_application_types, name='application-types'),
 ]
 
 if settings.DEBUG:

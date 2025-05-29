@@ -133,6 +133,7 @@ GROUP_SERVICE_URL = 'http://127.0.0.1:8000'  # или ваш URL
 SERVICE_AUTH_TOKEN = 'dev-internal-token'  # Общий для всех внутренних сервисов
 
 INSTALLED_APPS = [
+    'server.apps.Application',
     'server.apps.Content',
     'debug_toolbar',
     'phonenumber_field',
@@ -278,16 +279,16 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",  # Теперь Redis в Docker!
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        },
-        "KEY_PREFIX": "events_service"
-    }
-}
+# CACHES = {
+#     "default": {
+#         "BACKEND": "django_redis.cache.RedisCache",
+#         "LOCATION": "redis://127.0.0.1:6379/1",  # Теперь Redis в Docker!
+#         "OPTIONS": {
+#             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+#         },
+#         "KEY_PREFIX": "events_service"
+#     }
+# }
 
 # Время жизни кеша по умолчанию (в секундах)
 CACHE_TTL = 60 * 0.1  # 1 минут
