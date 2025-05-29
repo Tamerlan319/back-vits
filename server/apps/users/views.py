@@ -246,14 +246,14 @@ class RegisterInitView(views.APIView):
         serializer = RegisterInitSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
-
+            
             # Удаляем старые подтверждения для этого номера
             PhoneConfirmation.objects.filter(phone=data['phone']).delete()
-
+            
             # Генерируем код
             code = str(random.randint(100000, 999999))
-
-            # Сохраняем данные для подтверждения
+            
+            # Сохраняем ВСЕ данные для подтверждения
             PhoneConfirmation.objects.create(
                 phone=data['phone'],
                 code=code,
@@ -261,17 +261,18 @@ class RegisterInitView(views.APIView):
                     'username': data['username'],
                     'first_name': data.get('first_name', ''),
                     'last_name': data.get('last_name', ''),
+                    'middle_name': data.get('middle_name', ''),  # Добавляем отчество
                     'password': data['password']
                 }
             )
-
+            
             # В реальном приложении здесь отправка SMS
             print(f"Код подтверждения для {data['phone']}: {code}")
-
+            
             return Response({
                 "status": "success",
                 "message": "Код подтверждения отправлен",
-                "phone": data['phone'],
+                "phone": str(data['phone']),  # Явное преобразование в строку
                 "next_step": "confirm_code"
             })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -283,34 +284,33 @@ class RegisterConfirmView(views.APIView):
             data = serializer.validated_data
             confirmation = data['confirmation']
             reg_data = confirmation.registration_data
-
-            # Создаем пользователя
+            
+            # Создаем пользователя со всеми параметрами
             user = User.objects.create_user(
                 username=reg_data['username'],
                 phone=confirmation.phone,
-                first_name=reg_data['first_name'],
-                last_name=reg_data['last_name'],
+                first_name=reg_data.get('first_name', ''),
+                last_name=reg_data.get('last_name', ''),
+                middle_name=reg_data.get('middle_name', ''),  # Добавляем отчество
                 password=reg_data['password'],
-                phone_verified=True
+                phone_verified=True,  # Телефон подтвержден
+                is_active=True,       # Активируем аккаунт
+                role='guest'          # Устанавливаем роль гостя
             )
-
+            
             # Удаляем запись подтверждения
             confirmation.delete()
-
-            # # Генерируем токены
-            # refresh = RefreshToken.for_user(user)
-
+            
             return Response({
                 "status": "success",
                 "message": "Регистрация завершена",
-                # "tokens": {
-                #     "refresh": str(refresh),
-                #     "access": str(refresh.access_token)
-                # },
                 "user": {
                     "id": user.id,
                     "username": user.username,
-                    "phone": str(user.phone)
+                    "phone": str(user.phone),
+                    "role": user.role,
+                    "is_active": user.is_active,
+                    "phone_verified": user.phone_verified
                 }
             })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

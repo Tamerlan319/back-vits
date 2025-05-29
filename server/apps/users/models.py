@@ -8,18 +8,18 @@ from datetime import timedelta
 class PhoneConfirmation(models.Model):
     phone = PhoneNumberField(region='RU', unique=True)
     code = models.CharField(max_length=6)
-    created_at = models.DateTimeField(auto_now_add=True)  # Оставляем только это определение
-    registration_data = models.JSONField()  # Добавляем поле для хранения данных регистрации
-
+    created_at = models.DateTimeField(auto_now_add=True)
+    registration_data = models.JSONField()  # Будем хранить все данные регистрации
+    
     def is_expired(self):
         return (timezone.now() - self.created_at) > timedelta(minutes=5)
-
+    
     class Meta:
         verbose_name = "Подтверждение телефона"
         verbose_name_plural = "Подтверждения телефонов"
-
+    
     def __str__(self):
-        return f"Подтверждение для {str(self.phone)}"  # Явное преобразование в строку
+        return f"Подтверждение для {str(self.phone)}"
 
 class User(AbstractUser, PermissionsMixin):
     last_name = models.CharField(max_length=255, blank=True, null=True)
@@ -27,7 +27,11 @@ class User(AbstractUser, PermissionsMixin):
     middle_name = models.CharField(max_length=255, blank=True, null=True)
     username = models.CharField(max_length=150, unique=True)
     email = models.EmailField(unique=True, null=True)
-    role = models.CharField(max_length=50, choices=[('guest', 'Гость'), ('student', 'Студент'), ('teacher', 'Преподаватель'), ('admin', 'Администратор')])
+    role = models.CharField(
+        max_length=50, 
+        choices=[('guest', 'Гость'), ('student', 'Студент'), ('teacher', 'Преподаватель'), ('admin', 'Администратор')],
+        default='guest'  # Добавляем значение по умолчанию
+    )
     groups = models.ManyToManyField('Group', related_name='custom_user_groups', blank=True)
     user_permissions = models.ManyToManyField('auth.Permission', related_name='custom_user_permissions_set', blank=True)
     is_active = models.BooleanField(default=False)

@@ -6,6 +6,7 @@ from django.utils import timezone
 from datetime import timedelta
 import random
 import phonenumbers
+from phonenumber_field.serializerfields import PhoneNumberField
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -23,21 +24,13 @@ class GroupSerializer(serializers.ModelSerializer):
 
 class RegisterInitSerializer(serializers.Serializer):
     username = serializers.CharField(required=True)
-    phone = serializers.CharField(required=True)
+    phone = PhoneNumberField(region='RU')
     first_name = serializers.CharField(required=False)
     last_name = serializers.CharField(required=False)
+    middle_name = serializers.CharField(required=False)  # Добавляем отчество
     password = serializers.CharField(write_only=True, validators=[validate_password])
     password2 = serializers.CharField(write_only=True)
-
-    def validate_phone(self, value):
-        try:
-            parsed = phonenumbers.parse(value, 'RU')
-            if not phonenumbers.is_valid_number(parsed):
-                raise serializers.ValidationError("Неверный номер телефона")
-            return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
-        except phonenumbers.NumberParseException:
-            raise serializers.ValidationError("Неверный формат номера")
-
+    
     def validate(self, data):
         if data['password'] != data['password2']:
             raise serializers.ValidationError({"password": "Пароли не совпадают"})
