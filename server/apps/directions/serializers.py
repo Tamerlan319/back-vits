@@ -109,3 +109,20 @@ class ProgramListSerializer(serializers.ModelSerializer):
             'id', 'code', 'program_name', 'department', 'level',
             'form_display', 'is_active'
         ]
+
+class DepartmentWithProgramsSerializer(serializers.ModelSerializer):
+    programs = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Department
+        fields = ['id', 'name', 'programs']
+    
+    def get_programs(self, obj):
+        # Получаем все программы кафедры с полными связанными данными
+        programs = obj.programs.select_related(
+            'level'
+        ).prefetch_related(
+            'features'
+        ).filter(is_active=True)
+        
+        return ProgramSerializer(programs, many=True, context=self.context).data

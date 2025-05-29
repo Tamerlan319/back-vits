@@ -58,6 +58,7 @@ router.register(r'api/notifications', NotificationViewSet, basename='notificatio
 router.register(r'api/banners', BannerViewSet, basename='banner')
 router.register(r'api/achievements', AchievementViewSet, basename='achievement')
 router.register(r'api/reviews', ReviewViewSet, basename='review')
+router.register(r'api/events', EventViewSet, basename='events')
 
 urlpatterns = [
     path('admin/', admin.site.urls),

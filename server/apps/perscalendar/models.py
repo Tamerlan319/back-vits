@@ -35,6 +35,7 @@ class Event(models.Model):
     is_recurring = models.BooleanField(default=False, verbose_name="Повторяющееся")
     recurrence_rule = models.JSONField(blank=True, null=True, verbose_name="Правило повторения")
     recurrence_end = models.DateTimeField(blank=True, null=True, verbose_name="Окончание повторений")
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
 
     class Meta:
         ordering = ['start_time']

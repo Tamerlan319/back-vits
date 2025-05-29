@@ -7,41 +7,49 @@ from .models import Event, UserEvent
 from .serializers import EventSerializer, EventSerializer
 from .cors.permissions import EventPermission
 from .cors.services import GroupService
+from django.db.models import Q
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all().select_related('creator')
     serializer_class = EventSerializer
-    permission_classes = [EventPermission]
+    permission_classes = [IsAuthenticated]  # По умолчанию для изменяющих методов
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['event_type', 'group_id', 'creator', 'is_recurring']
+
+    def get_permissions(self):
+        # Разрешаем доступ без авторизации только для безопасных методов
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        return super().get_permissions()
 
     def get_queryset(self):
         user = self.request.user
         queryset = super().get_queryset()
 
-        # Фильтрация в зависимости от роли пользователя
+        # Для неавторизованных пользователей - только глобальные события
+        if not user.is_authenticated:
+            return queryset.filter(event_type='global')
+
+        # Фильтрация для авторизованных пользователей
         if user.role == 'admin':
-            # Админ: все события, кроме чужих личных
             return queryset.exclude(
-                models.Q(event_type='personal') & ~models.Q(creator=user) )
+                Q(event_type='personal') & ~Q(creator=user))
         
         elif user.role == 'teacher':
-            # Преподаватель: групповые, общие и свои личные
             return queryset.filter(
-                models.Q(event_type='group') |
-                models.Q(event_type='global') |
-                models.Q(event_type='personal', creator=user))
+                Q(event_type='group') |
+                Q(event_type='global') |
+                Q(event_type='personal', creator=user))
         
         elif user.role == 'student':
-            # Студент: групповые его группы, общие и его личные
             user_groups = GroupService.get_user_groups(user.id)
             return queryset.filter(
-                models.Q(event_type='group', group_id__in=user_groups) |
-                models.Q(event_type='global') |
-                models.Q(event_type='personal', creator=user))
+                Q(event_type='group', group_id__in=user_groups) |
+                Q(event_type='global') |
+                Q(event_type='personal', creator=user))
         
         elif user.role == 'guest':
-            # Гость: только общие события
             return queryset.filter(event_type='global')
         
         return queryset.none()

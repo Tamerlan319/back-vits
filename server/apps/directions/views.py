@@ -7,24 +7,24 @@ from .models import Department, EducationLevel, Program, PartnerCompany, Program
 from .serializers import (
     DepartmentSerializer, EducationLevelSerializer,
     ProgramSerializer, ProgramListSerializer,
-    PartnerCompanySerializer, ProgramFeatureSerializer
+    PartnerCompanySerializer, ProgramFeatureSerializer, DepartmentWithProgramsSerializer
 )
 from .filters import ProgramFilter
 
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.all().order_by('name')
-    serializer_class = DepartmentSerializer
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['name']
-    http_method_names = ['get', 'post', 'put', 'patch', 'head', 'options']
+    serializer_class = DepartmentSerializer  # Стандартный сериализатор
     
-    def handle_exception(self, exc):
-        if isinstance(exc, NotFound):
-            return Response(
-                {'error': 'Кафедра не найдена'}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
-        return super().handle_exception(exc)
+    @action(detail=False, methods=['get'], url_path='with-programs')
+    def with_programs(self, request):
+        """Получить кафедры с полными данными программ"""
+        departments = self.get_queryset()
+        serializer = DepartmentWithProgramsSerializer(
+            departments, 
+            many=True,
+            context={'request': request}
+        )
+        return Response(serializer.data)
 
 class EducationLevelViewSet(viewsets.ModelViewSet):
     queryset = EducationLevel.objects.all().order_by('name')

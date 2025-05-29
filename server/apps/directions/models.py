@@ -119,7 +119,6 @@ class PartnerCompany(models.Model):
             FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png'])
         ]
     )
-    website = models.URLField(blank=True, null=True)
 
     def __str__(self):
         return self.name
