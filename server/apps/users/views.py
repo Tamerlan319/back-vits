@@ -29,6 +29,9 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q
+from urllib.parse import urlparse, parse_qs, urlunparse
+import os
+from django.core.files.base import ContentFile
 
 def generate_pkce():
     """Генерация code_verifier и code_challenge для PKCE"""
@@ -158,7 +161,7 @@ class VKAuthCallbackView(APIView):
                             'fields': 'screen_name'
                         }
                     )
-                    # print(token_info['access_token'])
+                    # print(vk_response)
                     if username_response.status_code == 200:
                         vk_data_username = username_response.json().get('response', [{}])
 
@@ -186,10 +189,23 @@ class VKAuthCallbackView(APIView):
 
                         if vk_data_username.get('screen_name'):
                             user.username = vk_data_username['screen_name']
-                        # # Обновляем аватар, если есть
-                        # if vk_data.get('avatar'):
-                        #     user.avatar_url = vk_data['avatar']
-                        #     update_fields['avatar_url'] = vk_data['avatar']
+
+                            # Установка аватара из URL
+                        if vk_data.get('avatar'):
+                            avatar_url = vk_data['avatar']
+                            try:
+                                avatar_response = requests.get(avatar_url)
+                                if avatar_response.status_code == 200:
+                                    parsed_url = urlparse(avatar_url)
+                                    filename = os.path.basename(parsed_url.path)
+                                    user.avatar.save(
+                                        filename,
+                                        ContentFile(avatar_response.content),
+                                        save=False  # Не сохраняем пока
+                                    )
+                                    update_fields['avatar'] = 'from_vk'
+                            except Exception as e:
+                                print("Ошибка при загрузке аватара:", str(e))
 
                         # Дополнительные поля
                         user.role = "guest"
