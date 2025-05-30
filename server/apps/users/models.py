@@ -2,8 +2,13 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser, PermissionsMixin
 from django.core.exceptions import ValidationError
 from phonenumber_field.modelfields import PhoneNumberField  # Импорт PhoneNumberField
+from django.contrib.auth.models import AbstractUser, PermissionsMixin
+from django.utils.translation import gettext_lazy as _
+from phonenumber_field.modelfields import PhoneNumberField
 from django.utils import timezone
 from datetime import timedelta
+import uuid
+from server.settings.environments.storage_backends import YandexMediaStorage
 
 class PhoneConfirmation(models.Model):
     phone = PhoneNumberField(region='RU', unique=True)
@@ -22,48 +27,136 @@ class PhoneConfirmation(models.Model):
         return f"Подтверждение для {str(self.phone)}"
 
 class User(AbstractUser, PermissionsMixin):
-    last_name = models.CharField(max_length=255, blank=True, null=True)
-    first_name = models.CharField(max_length=255, blank=True, null=True)
-    middle_name = models.CharField(max_length=255, blank=True, null=True)
-    username = models.CharField(max_length=150, unique=True)
-    email = models.EmailField(unique=True, null=True)
-    role = models.CharField(
-        max_length=50, 
-        choices=[('guest', 'Гость'), ('student', 'Студент'), ('teacher', 'Преподаватель'), ('admin', 'Администратор')],
-        default='guest'  # Добавляем значение по умолчанию
-    )
-    groups = models.ManyToManyField('Group', related_name='custom_user_groups', blank=True)
-    user_permissions = models.ManyToManyField('auth.Permission', related_name='custom_user_permissions_set', blank=True)
-    is_active = models.BooleanField(default=False)
-    phone = PhoneNumberField(region='RU', null=False, blank=True, unique=True)
-    phone_verified = models.BooleanField(default=False, verbose_name="Телефон подтвержден")
+    class Role(models.TextChoices):
+        GUEST = 'guest', _('Гость')
+        STUDENT = 'student', _('Студент')
+        TEACHER = 'teacher', _('Преподаватель')
+        ADMIN = 'admin', _('Администратор')
+        MODERATOR = 'moderator', _('Модератор')
+
+    # Основные поля
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, null=True, blank=True)
+    username = models.CharField(_('username'), max_length=150, unique=True)
+    email = models.EmailField(_('email address'), unique=True, null=True, blank=True)
+    phone = PhoneNumberField(_('phone number'), region='RU', unique=True, null=True, blank=True)
     verification_code = models.CharField(max_length=6, null=True, blank=True)
-    code_sent_at = models.DateTimeField(null=True, blank=True)
-    vk_id = models.BigIntegerField(unique=True, null=True, blank=True)
+    
+    # Персональные данные
+    first_name = models.CharField(_('first name'), max_length=150, blank=True)
+    last_name = models.CharField(_('last name'), max_length=150, blank=True)
+    middle_name = models.CharField(_('middle name'), max_length=150, blank=True)
+    avatar = models.ImageField(
+        upload_to='avatars/',
+        storage=YandexMediaStorage(),
+        null=True,
+        blank=True
+    )
 
-    # Делаем username обязательным, но аутентификация будет по телефону
-    USERNAME_FIELD = 'phone'  # Основное поле для аутентификации
-    REQUIRED_FIELDS = ['username']  # Обязательные поля при создании superuser
-
-    def save(self, *args, **kwargs):
-        # Проверяем, новый ли это пользователь
-        is_new = self._state.adding
-
-        # Сначала сохраняем пользователя
-        super().save(*args, **kwargs)
-
-        # Проверяем группы только для существующих пользователей
-        if not is_new and self.role in ['guest', 'teacher', 'admin', 'student'] and self.groups.exists():
-            raise ValidationError("Teachers and Admins cannot have groups.")
-
+    
+    # Статусы
+    is_active = models.BooleanField(_('active'), default=True)
+    is_verified = models.BooleanField(_('verified'), default=False)
+    is_blocked = models.BooleanField(_('blocked'), default=False)
+    phone_verified = models.BooleanField(_('phone verified'), default=False)
+    
+    # Метаданные
+    role = models.CharField(
+        _('role'),
+        max_length=20,
+        choices=Role.choices,
+        default=Role.GUEST
+    )
+    last_login = models.DateTimeField(_('last login'), blank=True, null=True)
+    date_joined = models.DateTimeField(_('date joined'), default=timezone.now)
+    
+    # Блокировка
+    blocked_at = models.DateTimeField(_('blocked at'), null=True, blank=True)
+    blocked_reason = models.TextField(_('block reason'), blank=True, null=True)
+    blocked_by = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='blocked_users'
+    )
+    
+    # Дополнительные поля
+    vk_id = models.BigIntegerField(_('VK ID'), unique=True, null=True, blank=True)
+    has_unread_notifications = models.BooleanField(_('has unread notifications'), default=False)
+    
+    # Настройки
+    USERNAME_FIELD = 'phone'
+    REQUIRED_FIELDS = ['username', 'email']
+    
     class Meta:
-        verbose_name = "Пользователь"
-        verbose_name_plural = "Пользователи"
-
+        verbose_name = _('user')
+        verbose_name_plural = _('users')
+        ordering = ['-date_joined']
+        indexes = [
+            models.Index(fields=['phone']),
+            models.Index(fields=['email']),
+            models.Index(fields=['username']),
+            models.Index(fields=['role']),
+            models.Index(fields=['is_blocked']),
+        ]
+    
     def __str__(self):
-        # Преобразуем PhoneNumber в строку перед возвратом
-        phone_str = str(self.phone) if self.phone else ''
-        return f"{self.username} ({phone_str})"
+        return f"{self.get_full_name()} ({self.phone})" if self.phone else self.username
+    
+    def get_full_name(self):
+        return ' '.join(filter(None, [self.last_name, self.first_name, self.middle_name]))
+    
+    def block(self, reason, blocked_by):
+        self.is_blocked = True
+        self.blocked_at = timezone.now()
+        self.blocked_reason = reason
+        self.blocked_by = blocked_by
+        self.save(update_fields=['is_blocked', 'blocked_at', 'blocked_reason', 'blocked_by'])
+    
+    def unblock(self):
+        self.is_blocked = False
+        self.blocked_at = None
+        self.blocked_reason = None
+        self.blocked_by = None
+        self.save(update_fields=['is_blocked', 'blocked_at', 'blocked_reason', 'blocked_by'])
+
+class UserActivityLog(models.Model):
+    class ActionType(models.TextChoices):
+        LOGIN = 'login', _('Вход в систему')
+        LOGOUT = 'logout', _('Выход из системы')
+        PROFILE_UPDATE = 'profile_update', _('Обновление профиля')
+        PASSWORD_CHANGE = 'password_change', _('Смена пароля')
+        BLOCK = 'block', _('Блокировка')
+        UNBLOCK = 'unblock', _('Разблокировка')
+        ROLE_CHANGE = 'role_change', _('Изменение роли')
+    
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='activity_logs',
+        verbose_name=_('user')
+    )
+    action = models.CharField(
+        _('action'),
+        max_length=50,
+        choices=ActionType.choices
+    )
+    ip_address = models.GenericIPAddressField(_('IP address'), null=True, blank=True)
+    user_agent = models.TextField(_('user agent'), blank=True, null=True)
+    metadata = models.JSONField(_('metadata'), default=dict)
+    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
+    
+    class Meta:
+        verbose_name = _('user activity log')
+        verbose_name_plural = _('user activity logs')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'action']),
+            models.Index(fields=['created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user} - {self.get_action_display()} at {self.created_at}"
 
 class PhoneVerification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='phone_verifications')
@@ -112,66 +205,3 @@ class Teacher(models.Model):
     class Meta:
         verbose_name = "Преподаватель"
         verbose_name_plural = "Преподаватели"
-
-class Appeal(models.Model):
-    STATUS_CHOICES = [
-        ('new', 'Новое'),
-        ('in_progress', 'В обработке'),
-        ('resolved', 'Решено'),
-        ('rejected', 'Отклонено'),
-    ]
-
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='appeals')
-    title = models.CharField(max_length=255, verbose_name="Тема обращения")
-    message = models.TextField(verbose_name="Текст обращения")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='new')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = "Обращение"
-        verbose_name_plural = "Обращения"
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"{self.title} ({self.get_status_display()})"
-
-class AppealResponse(models.Model):
-    appeal = models.ForeignKey(Appeal, on_delete=models.CASCADE, related_name='responses')
-    admin = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    message = models.TextField(verbose_name="Текст ответа")
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = "Ответ на обращение"
-        verbose_name_plural = "Ответы на обращения"
-
-    def __str__(self):
-        return f"Ответ на {self.appeal.title}"
-
-class Notification(models.Model):
-    TYPE_CHOICES = [
-        ('appeal_created', 'Создано обращение'),
-        ('appeal_response', 'Ответ на обращение'),
-        ('status_changed', 'Изменение статуса'),
-    ]
-
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
-    appeal = models.ForeignKey(Appeal, on_delete=models.CASCADE, null=True, blank=True)
-    notification_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
-    message = models.TextField()
-    is_read = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = "Уведомление"
-        verbose_name_plural = "Уведомления"
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"{self.get_notification_type_display()} для {self.user.username}"
-
-class AppealAttachment(models.Model):
-    appeal = models.ForeignKey(Appeal, on_delete=models.CASCADE, related_name='attachments')
-    file = models.FileField(upload_to='appeals/attachments/')
-    uploaded_at = models.DateTimeField(auto_now_add=True)

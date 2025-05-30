@@ -1,6 +1,11 @@
 from django.db import models
 from django.contrib.auth import get_user_model
-from server.settings.environments.storage_backends import YandexMediaStorage
+from server.settings.environments.storage_backends import PrivateMediaStorage
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+from server.settings.environments.base import DEBUG_SOCKETS
 
 User = get_user_model()
 
@@ -38,7 +43,7 @@ class ApplicationAttachment(models.Model):
     application = models.ForeignKey(Application, on_delete=models.CASCADE, related_name='attachments')
     file = models.FileField(
         upload_to='applications/attachments/',
-        storage=YandexMediaStorage(),
+        storage=PrivateMediaStorage(),  # Используем приватное хранилище
         verbose_name="Файл"
     )
     uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата загрузки")
@@ -65,3 +70,26 @@ class ApplicationStatusLog(models.Model):
     
     def __str__(self):
         return f"Изменение статуса заявления #{self.application.id}"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if DEBUG_SOCKETS:
+            self.send_notification()
+
+    def send_notification(self):
+        channel_layer = get_channel_layer()
+        status_display = dict(Application.STATUS_CHOICES).get(self.to_status, self.to_status)
+        
+        message = f"Статус вашего заявления изменен: {status_display}"
+        if self.comment:
+            message += f". Комментарий: {self.comment}"
+        
+        async_to_sync(channel_layer.group_send)(
+            f'user_{self.application.user.id}',
+            {
+                'type': 'notify_user',
+                'message': message,
+                'application_id': self.application.id,
+                'status': self.to_status
+            }
+        )

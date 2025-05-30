@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Group, PhoneVerification, PhoneConfirmation, Appeal, AppealResponse, Notification
+from .models import User, Group, PhoneVerification, PhoneConfirmation
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth import authenticate
 from django.utils import timezone
@@ -7,6 +7,8 @@ from datetime import timedelta
 import random
 import phonenumbers
 from phonenumber_field.serializerfields import PhoneNumberField
+from .models import User, UserActivityLog
+from django.utils.translation import gettext_lazy as _
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -117,28 +119,133 @@ class PhoneVerifySerializer(serializers.Serializer):
         attrs['verification'] = verification
         return attrs
 
-class AppealSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-    status_display = serializers.CharField(source='get_status_display', read_only=True)
+class AdminUserListSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+    role_display = serializers.CharField(source='get_role_display', read_only=True)
+    status = serializers.SerializerMethodField()
     
     class Meta:
-        model = Appeal
-        fields = '__all__'
-        read_only_fields = ('user', 'status', 'created_at', 'updated_at')
+        model = User
+        fields = [
+            'uuid',
+            'username',
+            'full_name',
+            'email',
+            'phone',
+            'role',
+            'role_display',
+            'is_active',
+            'is_blocked',
+            'date_joined',
+            'last_login',
+            'status'
+        ]
+    
+    def get_full_name(self, obj):
+        return obj.get_full_name()
+    
+    def get_status(self, obj):
+        if obj.is_blocked:
+            return _("Blocked")
+        return _("Active") if obj.is_active else _("Inactive")
 
-class AppealResponseSerializer(serializers.ModelSerializer):
-    admin = UserSerializer(read_only=True)
+class AdminUserDetailSerializer(serializers.ModelSerializer):
+    activity_logs = serializers.SerializerMethodField()
+    blocked_by = serializers.StringRelatedField()
     
     class Meta:
-        model = AppealResponse
-        fields = '__all__'
-        read_only_fields = ('admin', 'created_at')
+        model = User
+        fields = [
+            'uuid',
+            'username',
+            'first_name',
+            'last_name',
+            'middle_name',
+            'email',
+            'phone',
+            'role',
+            'is_active',
+            'is_blocked',
+            'blocked_at',
+            'blocked_reason',
+            'blocked_by',
+            'date_joined',
+            'last_login',
+            'phone_verified',
+            'is_verified',
+            'activity_logs'
+        ]
+        read_only_fields = [
+            'uuid',
+            'date_joined',
+            'last_login',
+            'phone_verified',
+            'is_verified',
+            'activity_logs'
+        ]
+    
+    def get_activity_logs(self, obj):
+        from .models import UserActivityLog
+        logs = UserActivityLog.objects.filter(user=obj).order_by('-created_at')[:10]
+        return UserActivityLogSerializer(logs, many=True).data
 
-class NotificationSerializer(serializers.ModelSerializer):
-    appeal = AppealSerializer(read_only=True)
-    type_display = serializers.CharField(source='get_notification_type_display', read_only=True)
+class AdminUserUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'first_name',
+            'last_name',
+            'middle_name',
+            'email',
+            'role',
+            'is_active',
+            'is_blocked',
+            'blocked_reason'
+        ]
+    
+    def validate(self, data):
+        request = self.context.get('request')
+        
+        # Проверка на блокировку
+        if 'is_blocked' in data and data['is_blocked']:
+            if not data.get('blocked_reason'):
+                raise serializers.ValidationError(
+                    _("Block reason is required when blocking a user")
+                )
+            if not request.user.has_perm('users.block_user'):
+                raise serializers.ValidationError(
+                    _("You don't have permission to block users")
+                )
+        
+        # Проверка изменения роли
+        if 'role' in data and data['role'] != self.instance.role:
+            if not request.user.has_perm('users.change_role'):
+                raise serializers.ValidationError(
+                    _("You don't have permission to change user roles")
+                )
+        
+        return data
+
+class UserActivityLogSerializer(serializers.ModelSerializer):
+    action_display = serializers.CharField(source='get_action_display', read_only=True)
     
     class Meta:
-        model = Notification
-        fields = '__all__'
-        read_only_fields = ('user', 'is_read', 'created_at')
+        model = UserActivityLog
+        fields = [
+            'action',
+            'action_display',
+            'ip_address',
+            'created_at',
+            'metadata'
+        ]
+
+class UserSearchSerializer(serializers.Serializer):
+    query = serializers.CharField(required=False)
+    role = serializers.ChoiceField(
+        choices=User.Role.choices,
+        required=False
+    )
+    is_active = serializers.BooleanField(required=False)
+    is_blocked = serializers.BooleanField(required=False)
+    date_joined_after = serializers.DateField(required=False)
+    date_joined_before = serializers.DateField(required=False)

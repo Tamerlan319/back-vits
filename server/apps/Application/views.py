@@ -14,6 +14,7 @@ from server.apps.users.models import User
 from django.db.models import Q
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import PermissionDenied, ValidationError
+import os
 
 @api_view(['GET'])
 def get_application_types(request):
@@ -41,7 +42,8 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         return super().get_queryset().filter(user=user)
     
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        # Просто вызываем save(), user будет установлен в сериализаторе
+        serializer.save()
     
     @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated])
     def update_status(self, request, pk=None):
@@ -90,6 +92,11 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
 class ApplicationAttachmentViewSet(viewsets.ModelViewSet):
     queryset = ApplicationAttachment.objects.all()
     serializer_class = ApplicationAttachmentSerializer
@@ -101,29 +108,72 @@ class ApplicationAttachmentViewSet(viewsets.ModelViewSet):
             return super().get_queryset()
         return super().get_queryset().filter(application__user=user)
     
+    def validate_file(self, file):
+        """Валидация файла перед сохранением"""
+        # 1. Проверка размера файла (5MB максимум)
+        max_size = 5 * 1024 * 1024
+        if file.size > max_size:
+            raise ValidationError(
+                f"Максимальный размер файла 5MB. Ваш файл {round(file.size/1024/1024, 2)}MB"
+            )
+        
+        # 2. Проверка расширения
+        valid_extensions = ['.jpg', '.jpeg', '.png', '.pdf', '.doc', '.docx', '.zip']
+        ext = os.path.splitext(file.name)[1].lower()
+        if ext not in valid_extensions:
+            raise ValidationError(
+                f"Неподдерживаемый тип файла. Разрешенные: {', '.join(valid_extensions)}"
+            )
+        
+        # 3. Проверка имени файла (опционально)
+        if len(file.name) > 100:
+            raise ValidationError("Слишком длинное имя файла (макс. 100 символов)")
+
     def perform_create(self, serializer):
         application_id = self.request.data.get('application')
+        file = self.request.FILES.get('file')
+        
         try:
             application = Application.objects.get(id=application_id)
             
-            # Проверка прав доступа
+            # 1. Проверка прав доступа
             if application.user != self.request.user and self.request.user.role != 'admin':
                 raise PermissionDenied("Вы не можете добавлять файлы к этому заявлению")
             
-            # Проверка статуса заявления
+            # 2. Проверка статуса заявления
             if application.status != 'pending':
                 raise ValidationError(
                     "Файлы можно добавлять только к заявлениям со статусом 'На рассмотрении'"
                 )
             
-            # Проверка количества вложений
-            attachments_count = application.attachments.count()
-            if attachments_count >= 5:
+            # 3. Проверка количества вложений
+            if application.attachments.count() >= 5:
                 raise ValidationError(
                     "Максимальное количество вложений - 5. Удалите некоторые файлы перед добавлением новых."
                 )
             
-            serializer.save(application=application)
+            # 4. Валидация файла
+            if file:
+                self.validate_file(file)
+            else:
+                raise ValidationError("Файл не был загружен")
             
-        except Application.DoesNotExist:
+            # Сохранение
+            serializer.save(
+                application=application,
+                file=file
+            )
+            
+        except ObjectDoesNotExist:
             raise ValidationError("Заявление не найдено")
+        except Exception as e:
+            raise ValidationError(str(e))
+
+    def create(self, request, *args, **kwargs):
+        try:
+            return super().create(request, *args, **kwargs)
+        except (PermissionDenied, ValidationError) as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )

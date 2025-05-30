@@ -1,10 +1,10 @@
-from rest_framework import views, status, viewsets, generics
-from .models import Group, User, PhoneVerification, PhoneConfirmation, Appeal, AppealResponse
+from rest_framework import views, status, viewsets, generics, permissions
+from .models import Group, User, PhoneVerification, PhoneConfirmation, UserActivityLog
 from .serializers import (
     UserSerializer, GroupSerializer, AuthorizationSerializer,
     PhoneLoginSerializer, PhoneVerifySerializer, RegisterInitSerializer,
-    RegisterConfirmSerializer, AppealSerializer, AppealResponseSerializer,
-    NotificationSerializer, VKAuthSerializer
+    RegisterConfirmSerializer, VKAuthSerializer, AdminUserListSerializer,
+    AdminUserDetailSerializer, AdminUserUpdateSerializer, UserSearchSerializer
 )
 from rest_framework.views import APIView
 from .utils import generate_confirmation_token, confirm_token
@@ -25,6 +25,10 @@ import secrets
 import base64
 import hashlib
 from django.shortcuts import redirect
+from django.utils.translation import gettext_lazy as _
+from rest_framework.pagination import PageNumberPagination
+from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Q
 
 def generate_pkce():
     """Генерация code_verifier и code_challenge для PKCE"""
@@ -442,77 +446,148 @@ class VerifyPhoneView(APIView):
             return Response({"message": "Телефон успешно подтвержден"})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class AppealViewSet(viewsets.ModelViewSet):
-    queryset = Appeal.objects.all()
-    serializer_class = AppealSerializer
-    permission_classes = [IsAuthenticated]
+class AdminUserPagination(PageNumberPagination):
+    page_size = 25
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
+class IsAdminRole(permissions.BasePermission):
+    """
+    Доступ только пользователям с ролью 'admin'
+    """
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == 'admin'
+
+class AdminUserListView(generics.ListAPIView):
+    serializer_class = AdminUserListSerializer
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    pagination_class = AdminUserPagination
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['role', 'is_active', 'is_blocked']
+    
     def get_queryset(self):
-        user = self.request.user
-        if user.role in ['admin', 'teacher']:
-            return Appeal.objects.all()
-        return Appeal.objects.filter(user=user)
+        return User.objects.all().order_by('-date_joined')
 
-    def perform_create(self, serializer):
-        appeal = serializer.save(user=self.request.user)
-        # Создаем уведомление для администраторов
-        admins = User.objects.filter(role='admin')
-        for admin in admins:
-            Notification.objects.create(
-                user=admin,
-                appeal=appeal,
-                notification_type='appeal_created',
-                message=f'Новое обращение от {self.request.user.username}: {appeal.title}'
+class AdminUserDetailView(generics.RetrieveUpdateAPIView):
+    queryset = User.objects.all()
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    lookup_field = 'uuid'
+    
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return AdminUserDetailSerializer
+        return AdminUserUpdateSerializer
+    
+    def perform_update(self, serializer):
+        user = serializer.save()
+        request = self.request
+        
+        # Логирование изменений
+        changes = {}
+        for field, value in serializer.validated_data.items():
+            if getattr(user, field) != value:
+                changes[field] = {
+                    'old': getattr(user, field),
+                    'new': value
+                }
+        
+        if changes:
+            UserActivityLog.objects.create(
+                user=user,
+                action='profile_update',
+                ip_address=request.META.get('REMOTE_ADDR'),
+                user_agent=request.META.get('HTTP_USER_AGENT'),
+                metadata={
+                    'changed_by': str(request.user.uuid),
+                    'changes': changes
+                }
             )
 
-class AppealResponseViewSet(viewsets.ModelViewSet):
-    queryset = AppealResponse.objects.all()
-    serializer_class = AppealResponseSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        user = self.request.user
-        if user.role in ['admin', 'teacher']:
-            return AppealResponse.objects.all()
-        return AppealResponse.objects.filter(appeal__user=user)
-
-    def perform_create(self, serializer):
-        response = serializer.save(admin=self.request.user)
-        appeal = response.appeal
-
-        # Обновляем статус обращения, если это первый ответ
-        if appeal.status == 'new':
-            appeal.status = 'in_progress'
-            appeal.save()
-
-        # Создаем уведомление для пользователя
-        Notification.objects.create(
-            user=appeal.user,
-            appeal=appeal,
-            notification_type='appeal_response',
-            message=f'Получен ответ на ваше обращение "{appeal.title}"'
+class AdminUserBlockView(generics.UpdateAPIView):
+    queryset = User.objects.all()
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    lookup_field = 'uuid'
+    
+    def patch(self, request, *args, **kwargs):
+        user = self.get_object()
+        reason = request.data.get('reason', '')
+        
+        if not reason:
+            return Response(
+                {'detail': _('Block reason is required')},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        user.block(reason, request.user)
+        
+        # Логирование блокировки
+        UserActivityLog.objects.create(
+            user=user,
+            action='block',
+            ip_address=request.META.get('REMOTE_ADDR'),
+            user_agent=request.META.get('HTTP_USER_AGENT'),
+            metadata={
+                'blocked_by': str(request.user.uuid),
+                'reason': reason
+            }
+        )
+        
+        return Response(
+            {'status': _('User blocked successfully')},
+            status=status.HTTP_200_OK
         )
 
-class NotificationViewSet(viewsets.ModelViewSet):
-    serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated]
-    http_method_names = ['get', 'patch', 'head', 'options']
-
-    def get_queryset(self):
-        return Notification.objects.filter(user=self.request.user)
-
-    @action(detail=True, methods=['patch'])
-    def mark_as_read(self, request, pk=None):
-        notification = self.get_object()
-        notification.is_read = True
-        notification.save()
-        return Response({'status': 'marked as read'})
-
-    @action(detail=False, methods=['get'])
-    def unread(self, request):
-        unread_notifications = Notification.objects.filter(
-            user=request.user,
-            is_read=False
+class AdminUserUnblockView(generics.UpdateAPIView):
+    queryset = User.objects.all()
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    lookup_field = 'uuid'
+    
+    def patch(self, request, *args, **kwargs):
+        user = self.get_object()
+        user.unblock()
+        
+        # Логирование разблокировки
+        UserActivityLog.objects.create(
+            user=user,
+            action='unblock',
+            ip_address=request.META.get('REMOTE_ADDR'),
+            user_agent=request.META.get('HTTP_USER_AGENT'),
+            metadata={
+                'unblocked_by': str(request.user.uuid)
+            }
         )
-        serializer = self.get_serializer(unread_notifications, many=True)
-        return Response(serializer.data)
+        
+        return Response(
+            {'status': _('User unblocked successfully')},
+            status=status.HTTP_200_OK
+        )
+
+class AdminUserStatsView(generics.GenericAPIView):
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    
+    def get(self, request):
+        from django.db.models import Count
+        from datetime import datetime, timedelta
+        
+        # Базовая статистика
+        stats = {
+            'total_users': User.objects.count(),
+            'active_users': User.objects.filter(is_active=True).count(),
+            'blocked_users': User.objects.filter(is_blocked=True).count(),
+            'users_by_role': User.objects.values('role').annotate(count=Count('id')),
+        }
+        
+        # Статистика по регистрациям за последние 30 дней
+        thirty_days_ago = timezone.now() - timedelta(days=30)
+        registrations = (
+            User.objects
+            .filter(date_joined__gte=thirty_days_ago)
+            .extra({'date': "date(date_joined)"})
+            .values('date')
+            .annotate(count=Count('id'))
+            .order_by('date')
+        )
+        
+        stats['registrations_last_30_days'] = registrations
+        
+        return Response(stats)

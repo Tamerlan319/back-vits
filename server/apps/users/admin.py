@@ -1,29 +1,30 @@
 from django.contrib import admin
-from .models import User, Group, Student, Teacher, PhoneVerification, PhoneConfirmation
 from django.contrib.auth.admin import UserAdmin
+from .models import User, Group, Student, Teacher, PhoneVerification, PhoneConfirmation
 
 class CustomUserAdmin(UserAdmin):
+    list_display = ('username', 'email', 'phone', 'role', 'is_active', 'phone_verified')
+    list_filter = ('role', 'is_active', 'phone_verified', 'is_blocked')
+    search_fields = ('username', 'email', 'phone', 'first_name', 'last_name')
+    readonly_fields = ('date_joined', 'last_login')
 
-
-    # Добавляем телефон в список отображаемых полей
-    list_display = ('username', 'email', 'phone', 'role', 'is_active')
-    
-    # Полная переопределение fieldsets для добавления всех кастомных полей
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
         ('Персональные данные', {
-            'fields': ('last_name', 'first_name', 'middle_name', 'email', 'phone')
+            'fields': ('last_name', 'first_name', 'middle_name', 'email', 'phone', 'avatar')
         }),
         ('Статусы', {
-            'fields': ('is_active', 'phone_verified', 'role', 'verification_code')
+            'fields': ('is_active', 'phone_verified', 'is_verified', 'is_blocked', 'role', 'verification_code')
+        }),
+        ('Блокировка', {
+            'fields': ('blocked_at', 'blocked_reason', 'blocked_by')
         }),
         ('Права доступа', {
             'fields': ('is_staff', 'is_superuser', 'groups', 'user_permissions'),
         }),
         ('Важные даты', {'fields': ('last_login', 'date_joined')}),
     )
-    
-    # Поля при создании пользователя
+
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
@@ -31,10 +32,44 @@ class CustomUserAdmin(UserAdmin):
         }),
     )
 
-# Исправленная регистрация - передаём только модель и кастомный админ-класс
-admin.site.register(User, CustomUserAdmin)  # Только 2 аргумента!
-admin.site.register(PhoneVerification)
-admin.site.register(PhoneConfirmation)
-admin.site.register(Group)
-admin.site.register(Student)
-admin.site.register(Teacher)
+    actions = ['block_users', 'unblock_users']
+
+    def block_users(self, request, queryset):
+        for user in queryset:
+            user.block("Blocked by admin", request.user)
+    block_users.short_description = "Block selected users"
+
+    def unblock_users(self, request, queryset):
+        for user in queryset:
+            user.unblock()
+    unblock_users.short_description = "Unblock selected users"
+
+@admin.register(PhoneVerification)
+class PhoneVerificationAdmin(admin.ModelAdmin):
+    list_display = ('user', 'code', 'created_at', 'is_used')
+    list_filter = ('is_used', 'created_at')
+    search_fields = ('user__username', 'user__email', 'user__phone')
+
+@admin.register(PhoneConfirmation)
+class PhoneConfirmationAdmin(admin.ModelAdmin):
+    list_display = ('phone', 'code', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('phone',)
+
+@admin.register(Group)
+class GroupAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)
+    filter_horizontal = ('students',)
+
+@admin.register(Student)
+class StudentAdmin(admin.ModelAdmin):
+    list_display = ('user', 'group')
+    search_fields = ('user__username', 'user__email', 'user__phone', 'group__name')
+
+@admin.register(Teacher)
+class TeacherAdmin(admin.ModelAdmin):
+    list_display = ('user',)
+    search_fields = ('user__username', 'user__email', 'user__phone')
+
+admin.site.register(User, CustomUserAdmin)

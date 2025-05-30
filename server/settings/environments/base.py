@@ -19,14 +19,26 @@ load_dotenv()
 
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
-AWS_ACCESS_KEY_ID = 'YCAJEsXZW5hb-D0ezzq8z1in-' # Из IAM-аккаунта
-AWS_SECRET_ACCESS_KEY = 'YCPJ5w6vwQIX_OhDd0i5UsmTiAixbfHRnhY337Zw' # Из IAM-аккаунта
-AWS_STORAGE_BUCKET_NAME = 'vits'
+# Основные настройки Yandex Cloud S3
+AWS_ACCESS_KEY_ID = 'YCAJEsXZW5hb-D0ezzq8z1in-'  # IAM-ключ
+AWS_SECRET_ACCESS_KEY = 'YCPJ5w6vwQIX_OhDd0i5UsmTiAixbfHRnhY337Zw'  # IAM-секрет
 AWS_S3_ENDPOINT_URL = 'https://storage.yandexcloud.net'
 AWS_S3_REGION_NAME = 'ru-central1'
-AWS_DEFAULT_ACL = 'public-read'  # Для публичного доступа
-AWS_QUERYSTRING_AUTH = False     # Отключить подпись URL
 AWS_S3_SIGNATURE_VERSION = 's3v4'
+
+# Публичный бакет (для статики/медиа)
+AWS_STORAGE_BUCKET_NAME = 'vits-public'  # Имя публичного бакета
+AWS_DEFAULT_ACL = 'public-read'  # Файлы доступны без авторизации
+AWS_QUERYSTRING_AUTH = False  # Не требовать подписи URL
+
+# Приватный бакет (для документов)
+PRIVATE_AWS_STORAGE_BUCKET_NAME = 'vits-private'  # Имя приватного бакета
+PRIVATE_AWS_DEFAULT_ACL = 'private'  # Доступ только по подписи
+PRIVATE_AWS_QUERYSTRING_AUTH = True  # Генерировать подписанные URL
+
+# Пути для загрузки файлов
+PUBLIC_MEDIA_LOCATION = 'media'  # Папка в публичном бакете
+PRIVATE_MEDIA_LOCATION = 'protected'  # Папка в приватном бакете
 
 # VK OAuth 2.1https://www.pythonanywhere.com/user/Tamik327/files/home/Tamik327/back-vits/server/settings
 VK_CLIENT_ID = '53621398'
@@ -114,16 +126,19 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,                                # Отключение схемы в ответах API
 }
 
-# Настройки Channels
-ASGI_APPLICATION = 'server.routing.application'
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            "hosts": [('127.0.0.1', 6379)],
+DEBUG_SOCKETS = True  # Флаг для включения/выключения WebSockets
+
+if DEBUG_SOCKETS:
+    ASGI_APPLICATION = 'server.asgi.application'
+    
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                "hosts": [('127.0.0.1', 6379)],
+            },
         },
-    },
-}
+    }
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

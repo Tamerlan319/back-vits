@@ -15,13 +15,24 @@ class ApplicationAttachmentSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'file': {
                 'validators': [
-                    FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'pdf', 'zip', 'rar'])
+                    FileExtensionValidator(allowed_extensions=['.jpg', '.jpeg', '.png', '.pdf', '.doc', '.docx', '.zip'])
                 ]
             }
         }
     
     def get_file_url(self, obj):
-        return obj.file.url if obj.file else None
+        request = self.context.get('request')
+        if not request:
+            return None
+        
+        # Генерируем подписанный URL (доступен только авторизованным пользователям)
+        if obj.file and hasattr(obj.file, 'url'):
+            url = obj.file.storage.url(
+                obj.file.name,
+                expires=3600*24*7
+            )
+            return url
+        return None
     
     def validate_file(self, value):
         # Проверка размера файла (5 MB)
@@ -59,20 +70,30 @@ class ApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Application
         fields = [
-            'id', 'user', 'title', 'type', 'type_display', 'description', 
+            'id', 'user', 'type', 'type_display', 'description', 
             'status', 'status_display', 'created_at', 'updated_at', 
             'admin_comment', 'attachments', 'status_logs'
         ]
         read_only_fields = ['user', 'created_at', 'updated_at', 'status_logs']
 
 class ApplicationCreateSerializer(serializers.ModelSerializer):
+    attachments = serializers.ListField(
+        child=serializers.FileField(
+            max_length=100000,
+            allow_empty_file=True,
+            use_url=False,
+            validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'pdf', 'zip', 'rar'])]
+        ),
+        required=False,
+        write_only=True
+    )
+
     class Meta:
         model = Application
-        fields = ['title', 'type', 'description']
+        fields = ['type', 'description', 'attachments']
     
     def validate(self, data):
         user = self.context['request'].user
-        # Проверка количества заявлений в статусе pending
         pending_count = Application.objects.filter(
             user=user, 
             status='pending'
@@ -81,11 +102,30 @@ class ApplicationCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "У вас слишком много заявлений в обработке. Максимум 5 одновременно."
             )
+        
+        # Проверка количества файлов
+        if 'attachments' in data and len(data['attachments']) > 5:
+            raise serializers.ValidationError(
+                "Максимальное количество вложений - 5."
+            )
+            
         return data
     
     def create(self, validated_data):
-        user = self.context['request'].user
-        return Application.objects.create(user=user, **validated_data)
+        attachments = validated_data.pop('attachments', [])
+        application = Application.objects.create(
+            user=self.context['request'].user,
+            **validated_data
+        )
+        
+        # Создаем прикрепленные файлы
+        for file in attachments:
+            ApplicationAttachment.objects.create(
+                application=application,
+                file=file
+            )
+            
+        return application
 
 class ApplicationStatusUpdateSerializer(serializers.ModelSerializer):
     class Meta:

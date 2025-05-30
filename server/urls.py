@@ -14,10 +14,13 @@ from server.apps.users.views import (
     VerifyPhoneView,
     RegisterInitView, 
     RegisterConfirmView,
-    AppealViewSet,
-    AppealResponseViewSet,
-    NotificationViewSet, #представления из сервиса для работы с пользователями
-    VKAuthInitView, VKAuthCallbackView
+    VKAuthInitView,
+    VKAuthCallbackView,
+    AdminUserListView,
+    AdminUserDetailView,
+    AdminUserBlockView,
+    AdminUserUnblockView,
+    AdminUserStatsView
 )
 from server.apps.virtmuseum.views import AudienceViewSet, AudienceImageViewSet, CharacteristicViewSet #представления из сериса виртуального музея
 from server.apps.news.views import (
@@ -53,9 +56,6 @@ router.register(r'api/audience-images', AudienceImageViewSet, basename='audience
 router.register(r'api/characteristics', CharacteristicViewSet, basename='characteristics') #получить характеристики аудитории
 router.register(r'api/departments', DepartmentViewSet, basename='departments') #получить направления обучения
 router.register(r'api/programs', ProgramViewSet, basename='programs') #получить программы обучения
-router.register(r'api/appeals', AppealViewSet, basename='appeal')
-router.register(r'api/appeal-responses', AppealResponseViewSet, basename='appeal-response')
-router.register(r'api/notifications', NotificationViewSet, basename='notification')
 router.register(r'api/banners', BannerViewSet, basename='banner')
 router.register(r'api/achievements', AchievementViewSet, basename='achievement')
 router.register(r'api/reviews', ReviewViewSet, basename='review')
@@ -87,6 +87,11 @@ urlpatterns = [
     path('auth/vk/callback/', VKAuthCallbackView.as_view(), name='vk-auth-callback'),
     path('__debug__/', include('debug_toolbar.urls')),  # дебаг для кеширования
     path('api/application-types/', get_application_types, name='application-types'),
+    path('api/admin/users/', AdminUserListView.as_view(), name='admin-user-list'),
+    path('api/admin/users/<uuid:uuid>/', AdminUserDetailView.as_view(), name='admin-user-detail'),
+    path('api/admin/users/<uuid:uuid>/block/', AdminUserBlockView.as_view(), name='admin-user-block'),
+    path('api/admin/users/<uuid:uuid>/unblock/', AdminUserUnblockView.as_view(), name='admin-user-unblock'),
+    path('api/admin/stats/', AdminUserStatsView.as_view(), name='admin-stats'),
 ]
 
 if settings.DEBUG:
