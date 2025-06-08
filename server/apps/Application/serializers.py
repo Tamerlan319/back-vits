@@ -29,7 +29,7 @@ class ApplicationAttachmentSerializer(serializers.ModelSerializer):
         if obj.file and hasattr(obj.file, 'url'):
             url = obj.file.storage.url(
                 obj.file.name,
-                expires=3600*24*7
+                expires=3600
             )
             return url
         return None
@@ -44,7 +44,7 @@ class ApplicationAttachmentSerializer(serializers.ModelSerializer):
         
         # Проверка расширения файла
         ext = os.path.splitext(value.name)[1].lower()
-        valid_extensions = ['.jpg', '.jpeg', '.png', '.pdf', '.zip', '.rar']
+        valid_extensions = ['.jpg', '.jpeg', '.png', '.pdf', '.doc', '.docx', '.zip']
         if ext not in valid_extensions:
             raise serializers.ValidationError(
                 f"Неподдерживаемый тип файла. Разрешенные типы: {', '.join(valid_extensions)}"

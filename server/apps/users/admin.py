@@ -1,17 +1,17 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User, Group, Student, Teacher, PhoneVerification, PhoneConfirmation
+from .models import User, Group, Student, Teacher, PhoneConfirmation, UserPhone
 
 class CustomUserAdmin(UserAdmin):
-    list_display = ('username', 'email', 'phone', 'role', 'is_active', 'phone_verified')
+    list_display = ('username', 'email', 'role', 'is_active', 'phone_verified')
     list_filter = ('role', 'is_active', 'phone_verified', 'is_blocked')
-    search_fields = ('username', 'email', 'phone', 'first_name', 'last_name')
+    search_fields = ('username', 'email', 'first_name', 'last_name')
     readonly_fields = ('date_joined', 'last_login')
 
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
         ('Персональные данные', {
-            'fields': ('last_name', 'first_name', 'middle_name', 'email', 'phone', 'avatar')
+            'fields': ('last_name', 'first_name', 'middle_name', 'email', 'avatar')
         }),
         ('Статусы', {
             'fields': ('is_active', 'phone_verified', 'is_verified', 'is_blocked', 'role', 'verification_code')
@@ -28,7 +28,7 @@ class CustomUserAdmin(UserAdmin):
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('username', 'email', 'phone', 'password1', 'password2', 'role'),
+            'fields': ('username', 'email', 'password1', 'password2', 'role'),
         }),
     )
 
@@ -43,12 +43,6 @@ class CustomUserAdmin(UserAdmin):
         for user in queryset:
             user.unblock()
     unblock_users.short_description = "Unblock selected users"
-
-@admin.register(PhoneVerification)
-class PhoneVerificationAdmin(admin.ModelAdmin):
-    list_display = ('user', 'code', 'created_at', 'is_used')
-    list_filter = ('is_used', 'created_at')
-    search_fields = ('user__username', 'user__email', 'user__phone')
 
 @admin.register(PhoneConfirmation)
 class PhoneConfirmationAdmin(admin.ModelAdmin):
@@ -71,5 +65,7 @@ class StudentAdmin(admin.ModelAdmin):
 class TeacherAdmin(admin.ModelAdmin):
     list_display = ('user',)
     search_fields = ('user__username', 'user__email', 'user__phone')
+
+admin.site.register(UserPhone)
 
 admin.site.register(User, CustomUserAdmin)

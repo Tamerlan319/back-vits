@@ -43,17 +43,21 @@ PRIVATE_MEDIA_LOCATION = 'protected'  # Папка в приватном бак�
 # VK OAuth 2.1https://www.pythonanywhere.com/user/Tamik327/files/home/Tamik327/back-vits/server/settings
 VK_CLIENT_ID = '53621398'
 VK_CLIENT_SECRET = 'd99d7316d99d7316d99d731615daaf4180dd99dd99d7316b1ae015d6901a7ff146ec7fe'
-VK_REDIRECT_URI = 'https://9d6f344add41e2f82cb50c416a06156c.serveo.net/auth/vk/callback/'
+VK_REDIRECT_URI = 'https://6ec8e31a36d7d98aae4a6531f9f31947.serveo.net/auth/vk/callback/'
 VK_API_VERSION = '5.199'
 VK_AUTH_URL = "https://id.vk.com/authorize"
 VK_TOKEN_URL = "https://id.vk.com/oauth2/auth"  # Ключевое изменение!
 VK_SCOPE = 'email,phone'  # Только необходимые scope
 FRONT_VK_CALLBACK = 'https://tamik.surge.sh/'
 
+EXOLVE_SENDER_NAME = "vits"
+EXOLVE_API_KEY = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJRV05sMENiTXY1SHZSV29CVUpkWjVNQURXSFVDS0NWODRlNGMzbEQtVHA0In0.eyJleHAiOjIwNjQ3NTI1NjMsImlhdCI6MTc0OTM5MjU2MywianRpIjoiOThkNzE2NjQtODJhOS00ZDY5LWI3MzgtYmIzYmVlYjU3MzE4IiwiaXNzIjoiaHR0cHM6Ly9zc28uZXhvbHZlLnJ1L3JlYWxtcy9FeG9sdmUiLCJhdWQiOiJhY2NvdW50Iiwic3ViIjoiN2IyMmNhYjUtMGM1MC00MmUyLTkxNDUtZGMwOWYyYzc1MGVmIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiNjFlZjNmMjgtNWYyMS00NTFkLWE3ZmItY2NhNDk2MWU2NWIzIiwic2Vzc2lvbl9zdGF0ZSI6IjZmMWYxMDQ3LTZmNjMtNDI4MS04NjU2LWU2ZjUzYmExNjI3YiIsImFjciI6IjEiLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiZGVmYXVsdC1yb2xlcy1leG9sdmUiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYWNjb3VudCI6eyJyb2xlcyI6WyJtYW5hZ2UtYWNjb3VudCIsIm1hbmFnZS1hY2NvdW50LWxpbmtzIiwidmlldy1wcm9maWxlIl19fSwic2NvcGUiOiJleG9sdmVfYXBwIHByb2ZpbGUgZW1haWwiLCJzaWQiOiI2ZjFmMTA0Ny02ZjYzLTQyODEtODY1Ni1lNmY1M2JhMTYyN2IiLCJ1c2VyX3V1aWQiOiI4NTczM2RjYy0zMTczLTQ5MzItYTczOS05NmUxYmIyNmI4MzciLCJjbGllbnRIb3N0IjoiMTcyLjE2LjE2MS4xOSIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwiY2xpZW50SWQiOiI2MWVmM2YyOC01ZjIxLTQ1MWQtYTdmYi1jY2E0OTYxZTY1YjMiLCJhcGlfa2V5Ijp0cnVlLCJhcGlmb25pY2Ffc2lkIjoiNjFlZjNmMjgtNWYyMS00NTFkLWE3ZmItY2NhNDk2MWU2NWIzIiwiYmlsbGluZ19udW1iZXIiOiIxMzMwODM5IiwiYXBpZm9uaWNhX3Rva2VuIjoiYXV0ZmNmMzY0YmUtMTYwMi00NTI0LWE5Y2MtMWI1MTY2YzhlZTgxIiwicHJlZmVycmVkX3VzZXJuYW1lIjoic2VydmljZS1hY2NvdW50LTYxZWYzZjI4LTVmMjEtNDUxZC1hN2ZiLWNjYTQ5NjFlNjViMyIsImN1c3RvbWVyX2lkIjoiMTM0MjM5IiwiY2xpZW50QWRkcmVzcyI6IjE3Mi4xNi4xNjEuMTkifQ.MLnxvf_jT2T00hUv7K7Wc0rdbUf4FQO9g4puWgWcMWNfIbjrLH-PjgIzK7468M7dhDl9lIcW8-fMfdPy6eWrNkc232TYD9Iqqjzf2xgjUOBgxbOBFgKRQGxozusnbwrW72pkqDtVK-UGWJtQBNWraW6VwqyfEVhTEAQ0Vu__8EQn0dGcs45pm5Oxwqqo9N-T9si5Ygagug2Jw7cYzDEprCErOloR4UQ2DlQlt3OoBev9_K4loi8FDxdcxUezM2yyCXyBJNgncbhvb9aCjsxckP9hKQOMFQdrV1bAV8EoBha3GQX-AXbAzW0T9hsbx8Zs0szff7UkhV5M1YVVxq1lJg"
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-TEXTBELT_API_KEY = 'e6a38bb90671d42125a40bf555da81c5315ca7aabUUwHB9Ff83lVU8sJzGc0T5Qf'  # Для платной версии
+SMSRU_API_ID = '0D3B2BC8-BB00-062A-3496-E40613279A32'
+SMS_SENDER_NAME = "vits"
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -80,6 +84,13 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
     'EXCEPTION_HANDLER': 'server.apps.news.exceptions.custom_exception_handler',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'API Documentation',
+    'DESCRIPTION': 'API for vits project',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -189,12 +200,8 @@ MIDDLEWARE = [
 # ---------------------------------
 
 CORS_ALLOW_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://26.152.2.215:5173"
+    "https://tamik.surge.sh"
 ]
-
-CORS_ALLOW_ALL_ORIGINS = True
 
 ALLOWED_HOSTS = ['*']
 

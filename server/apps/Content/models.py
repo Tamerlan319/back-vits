@@ -38,7 +38,6 @@ class Review(models.Model):
     author = models.CharField(max_length=150)  # Просто текстовое поле
     course = models.CharField(max_length=150)
     text = models.TextField()
-    image = models.ImageField(upload_to='reviews/', blank=True, null=True)
     image = models.ImageField(
         upload_to='reviews/',
         storage=YandexMediaStorage(),  # или оставьте DEFAULT_FILE_STORAGE

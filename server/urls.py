@@ -10,7 +10,6 @@ from server.apps.users.views import (
     UserView, 
     AuthorizationView, 
     PhoneLoginView, 
-    SendVerificationCodeView, 
     VerifyPhoneView,
     RegisterInitView, 
     RegisterConfirmView,
@@ -40,22 +39,22 @@ from server.apps.proftesting.views import (
 )
 from server.apps.Content.views import BannerViewSet, AchievementViewSet, ReviewViewSet
 from server.apps.Application.views import ApplicationViewSet, ApplicationAttachmentViewSet, get_application_types
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 router = routers.DefaultRouter()
-router.register(r'api/groups', GroupView, basename='group') #получить список групп
-# router.register(r'api/register', RegisterView, basename='register') #регистрация
-router.register(r'api/users', UserView, basename='users') #получить список юзеров
-router.register(r'api/audiences', AudienceViewSet, basename='audience') #получить список адуиторий
-router.register(r'api/categories', CategoryViewSet, basename='categories') #категории новостей
-router.register(r'api/tags', TagViewSet, basename='tags') #теги новостей
-router.register(r'api/news', NewsViewSet, basename='news') #получить новости
-router.register(r'api/news/latest_news', NewsViewSet, basename='latest_news') #получить последние три новости
-router.register(r'api/comments', CommentViewSet, basename='comments') #комментарии
-router.register(r'api/likes', LikeViewSet, basename='likes') #лайки
-router.register(r'api/audience-images', AudienceImageViewSet, basename='audience-images') #получить фото аудиторий
-router.register(r'api/characteristics', CharacteristicViewSet, basename='characteristics') #получить характеристики аудитории
-router.register(r'api/departments', DepartmentViewSet, basename='departments') #получить направления обучения
-router.register(r'api/programs', ProgramViewSet, basename='programs') #получить программы обучения
+router.register(r'api/groups', GroupView, basename='group')
+router.register(r'api/users', UserView, basename='users') 
+router.register(r'api/audiences', AudienceViewSet, basename='audience')
+router.register(r'api/categories', CategoryViewSet, basename='categories') 
+router.register(r'api/tags', TagViewSet, basename='tags')
+router.register(r'api/news', NewsViewSet, basename='news')
+router.register(r'api/news/latest_news', NewsViewSet, basename='latest_news') 
+router.register(r'api/comments', CommentViewSet, basename='comments')
+router.register(r'api/likes', LikeViewSet, basename='likes') 
+router.register(r'api/audience-images', AudienceImageViewSet, basename='audience-images')
+router.register(r'api/characteristics', CharacteristicViewSet, basename='characteristics')
+router.register(r'api/departments', DepartmentViewSet, basename='departments')
+router.register(r'api/programs', ProgramViewSet, basename='programs')
 router.register(r'api/banners', BannerViewSet, basename='banner')
 router.register(r'api/achievements', AchievementViewSet, basename='achievement')
 router.register(r'api/reviews', ReviewViewSet, basename='review')
@@ -66,17 +65,15 @@ router.register(r'api/application-attachments', ApplicationAttachmentViewSet, ba
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
+    path('__debug__/', include('debug_toolbar.urls')),
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    # path('api/register', RegisterView.as_view(), name='register'), #регистрация
-    # path('api/authorization/', AuthorizationView.as_view(), name='authorization'),
     path('api/register/init/', RegisterInitView.as_view(), name='register-init'),
     path('api/register/confirm/', RegisterConfirmView.as_view(), name='register-confirm'),
-    path('api/authorization/', AuthorizationView.as_view(), name='login'),
     path('api/login/phone/', PhoneLoginView.as_view(), name='phone_login'),
-    path('api/send-code/', SendVerificationCodeView.as_view(), name='send_code'),
-    path('api/verify-phone/', VerifyPhoneView.as_view(), name='verify_phone'),
-    path('api/education-levels/', EducationLevelsView.as_view(), name='education-levels'),
     path('api/question-groups/', QuestionGroupsView.as_view(), name='question-groups'),
     path('api/questions/', QuestionsView.as_view(), name='questions'),
     path('api/start-test/', StartTestView.as_view(), name='start-test'),
@@ -85,7 +82,6 @@ urlpatterns = [
     path('api/results/<int:session_id>/', TestResultView.as_view(), name='test-result'),
     path('auth/vk/init/', VKAuthInitView.as_view(), name='vk-auth-init'),
     path('auth/vk/callback/', VKAuthCallbackView.as_view(), name='vk-auth-callback'),
-    path('__debug__/', include('debug_toolbar.urls')),  # дебаг для кеширования
     path('api/application-types/', get_application_types, name='application-types'),
     path('api/admin/users/', AdminUserListView.as_view(), name='admin-user-list'),
     path('api/admin/users/<uuid:uuid>/', AdminUserDetailView.as_view(), name='admin-user-detail'),

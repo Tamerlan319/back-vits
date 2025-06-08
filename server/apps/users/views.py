@@ -1,8 +1,8 @@
 from rest_framework import views, status, viewsets, generics, permissions
-from .models import Group, User, PhoneVerification, PhoneConfirmation, UserActivityLog
+from .models import Group, User, PhoneConfirmation, UserActivityLog, UserPhone
 from .serializers import (
     UserSerializer, GroupSerializer, AuthorizationSerializer,
-    PhoneLoginSerializer, PhoneVerifySerializer, RegisterInitSerializer,
+    PhoneLoginSerializer, RegisterInitSerializer,
     RegisterConfirmSerializer, VKAuthSerializer, AdminUserListSerializer,
     AdminUserDetailSerializer, AdminUserUpdateSerializer, UserSearchSerializer
 )
@@ -168,7 +168,7 @@ class VKAuthCallbackView(APIView):
                     if vk_response.status_code == 200:
                         vk_data = vk_response.json().get('user', {})
 
-                        # Обновляем только те поля, которые есть в ответе
+                        # Обновление данных пользователя
                         update_fields = {}
                         if vk_data.get('first_name'):
                             user.first_name = vk_data['first_name']
@@ -179,9 +179,16 @@ class VKAuthCallbackView(APIView):
                             update_fields['last_name'] = vk_data['last_name']
 
                         if vk_data.get('phone'):
-                            user.phone = vk_data['phone']
-                            update_fields['phone'] = vk_data['phone']
+                            # Обновляем телефон через UserPhone
+                            phone_str = vk_data['phone']
+                            if not hasattr(user, 'phone_data'):
+                                UserPhone.objects.create(user=user, phone=phone_str)
+                            else:
+                                user.phone_data.phone = phone_str
+                                user.phone_data.save()
+                            
                             user.phone_verified = True
+                            update_fields['phone_verified'] = True
 
                         if vk_data.get('email'):
                             user.email = vk_data['email']
@@ -261,11 +268,23 @@ class UserView(viewsets.ModelViewSet):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 
+import json
+import logging
+
+logger = logging.getLogger(__name__)
+
 class RegisterInitView(views.APIView):
     def post(self, request):
         serializer = RegisterInitSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
+            
+            # Проверяем существование телефона через хеш
+            phone_str = str(data['phone'])
+            phone_hash = hashlib.sha256(phone_str.encode()).hexdigest()
+            
+            if UserPhone.objects.filter(phone_hash=phone_hash).exists():
+                raise serializers.ValidationError({"phone": "Этот телефон уже зарегистрирован"})
             
             # Удаляем старые подтверждения для этого номера
             PhoneConfirmation.objects.filter(phone=data['phone']).delete()
@@ -273,7 +292,7 @@ class RegisterInitView(views.APIView):
             # Генерируем код
             code = str(random.randint(100000, 999999))
             
-            # Сохраняем ВСЕ данные для подтверждения
+            # Сохраняем данные для подтверждения
             PhoneConfirmation.objects.create(
                 phone=data['phone'],
                 code=code,
@@ -281,21 +300,65 @@ class RegisterInitView(views.APIView):
                     'username': data['username'],
                     'first_name': data.get('first_name', ''),
                     'last_name': data.get('last_name', ''),
-                    'middle_name': data.get('middle_name', ''),  # Добавляем отчество
+                    'middle_name': data.get('middle_name', ''),
                     'password': data['password']
                 }
             )
             
-            # В реальном приложении здесь отправка SMS
-            print(f"Код подтверждения для {data['phone']}: {code}")
-            
+            # Отправка SMS
+            # if settings.DEBUG:
+            #     print(f"Код подтверждения для {data['phone']}: {code}")
+            # else:
+            self._send_sms_via_exolve(data['phone'], code)
+                
             return Response({
                 "status": "success",
                 "message": "Код подтверждения отправлен",
-                "phone": str(data['phone']),  # Явное преобразование в строку
+                "phone": phone_str,
                 "next_step": "confirm_code"
             })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def _send_sms_via_exolve(self, phone, code):
+        """Отправка SMS через Exolve API"""
+        url = "https://api.exolve.ru/messaging/v1/SendSMS"
+        
+        # Нормализация номера телефона
+        cleaned_phone = ''.join(filter(str.isdigit, str(phone)))
+        if cleaned_phone.startswith('8'):
+            cleaned_phone = '7' + cleaned_phone[1:]
+        elif not cleaned_phone.startswith('7'):
+            cleaned_phone = '7' + cleaned_phone
+        
+        # Формируем текст сообщения
+        text = f"Ваш код подтверждения: {code}"
+        
+        # Подготовка данных для запроса
+        payload = {
+            "number": "79300650829",  # Ваш номер отправителя из примера
+            "destination": cleaned_phone,
+            "text": text
+        }
+        
+        headers = {
+            "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJRV05sMENiTXY1SHZSV29CVUpkWjVNQURXSFVDS0NWODRlNGMzbEQtVHA0In0.eyJleHAiOjIwNjQ3NTI1NjMsImlhdCI6MTc0OTM5MjU2MywianRpIjoiOThkNzE2NjQtODJhOS00ZDY5LWI3MzgtYmIzYmVlYjU3MzE4IiwiaXNzIjoiaHR0cHM6Ly9zc28uZXhvbHZlLnJ1L3JlYWxtcy9FeG9sdmUiLCJhdWQiOiJhY2NvdW50Iiwic3ViIjoiN2IyMmNhYjUtMGM1MC00MmUyLTkxNDUtZGMwOWYyYzc1MGVmIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiNjFlZjNmMjgtNWYyMS00NTFkLWE3ZmItY2NhNDk2MWU2NWIzIiwic2Vzc2lvbl9zdGF0ZSI6IjZmMWYxMDQ3LTZmNjMtNDI4MS04NjU2LWU2ZjUzYmExNjI3YiIsImFjciI6IjEiLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiZGVmYXVsdC1yb2xlcy1leG9sdmUiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYWNjb3VudCI6eyJyb2xlcyI6WyJtYW5hZ2UtYWNjb3VudCIsIm1hbmFnZS1hY2NvdW50LWxpbmtzIiwidmlldy1wcm9maWxlIl19fSwic2NvcGUiOiJleG9sdmVfYXBwIHByb2ZpbGUgZW1haWwiLCJzaWQiOiI2ZjFmMTA0Ny02ZjYzLTQyODEtODY1Ni1lNmY1M2JhMTYyN2IiLCJ1c2VyX3V1aWQiOiI4NTczM2RjYy0zMTczLTQ5MzItYTczOS05NmUxYmIyNmI4MzciLCJjbGllbnRIb3N0IjoiMTcyLjE2LjE2MS4xOSIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwiY2xpZW50SWQiOiI2MWVmM2YyOC01ZjIxLTQ1MWQtYTdmYi1jY2E0OTYxZTY1YjMiLCJhcGlfa2V5Ijp0cnVlLCJhcGlmb25pY2Ffc2lkIjoiNjFlZjNmMjgtNWYyMS00NTFkLWE3ZmItY2NhNDk2MWU2NWIzIiwiYmlsbGluZ19udW1iZXIiOiIxMzMwODM5IiwiYXBpZm9uaWNhX3Rva2VuIjoiYXV0ZmNmMzY0YmUtMTYwMi00NTI0LWE5Y2MtMWI1MTY2YzhlZTgxIiwicHJlZmVycmVkX3VzZXJuYW1lIjoic2VydmljZS1hY2NvdW50LTYxZWYzZjI4LTVmMjEtNDUxZC1hN2ZiLWNjYTQ5NjFlNjViMyIsImN1c3RvbWVyX2lkIjoiMTM0MjM5IiwiY2xpZW50QWRkcmVzcyI6IjE3Mi4xNi4xNjEuMTkifQ.MLnxvf_jT2T00hUv7K7Wc0rdbUf4FQO9g4puWgWcMWNfIbjrLH-PjgIzK7468M7dhDl9lIcW8-fMfdPy6eWrNkc232TYD9Iqqjzf2xgjUOBgxbOBFgKRQGxozusnbwrW72pkqDtVK-UGWJtQBNWraW6VwqyfEVhTEAQ0Vu__8EQn0dGcs45pm5Oxwqqo9N-T9si5Ygagug2Jw7cYzDEprCErOloR4UQ2DlQlt3OoBev9_K4loi8FDxdcxUezM2yyCXyBJNgncbhvb9aCjsxckP9hKQOMFQdrV1bAV8EoBha3GQX-AXbAzW0T9hsbx8Zs0szff7UkhV5M1YVVxq1lJg",  # Ваш токен из примера
+            "Content-Type": "application/json"
+        }
+        
+        try:
+            response = requests.post(url, json=payload, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            response_data = response.json()
+            if 'message_id' in response_data:
+                return True
+            return False
+            
+        except requests.exceptions.RequestException as e:
+            print(f"Ошибка при отправке SMS: {e}")
+            if hasattr(e, 'response') and e.response:
+                print(f"Детали ошибки: {e.response.text}")
+            raise Exception("Не удалось отправить SMS. Пожалуйста, попробуйте позже.")
 
 class RegisterConfirmView(views.APIView):
     def post(self, request):
@@ -305,17 +368,22 @@ class RegisterConfirmView(views.APIView):
             confirmation = data['confirmation']
             reg_data = confirmation.registration_data
             
-            # Создаем пользователя со всеми параметрами
+            # Создаем пользователя (без поля phone)
             user = User.objects.create_user(
                 username=reg_data['username'],
-                phone=confirmation.phone,
                 first_name=reg_data.get('first_name', ''),
                 last_name=reg_data.get('last_name', ''),
-                middle_name=reg_data.get('middle_name', ''),  # Добавляем отчество
+                middle_name=reg_data.get('middle_name', ''),
                 password=reg_data['password'],
-                phone_verified=True,  # Телефон подтвержден
-                is_active=True,       # Активируем аккаунт
-                role='guest'          # Устанавливаем роль гостя
+                phone_verified=True,
+                is_active=True,
+                role='guest'
+            )
+            
+            # Создаем запись с телефоном
+            UserPhone.objects.create(
+                user=user,
+                phone=str(confirmation.phone)  # Это автоматически зашифрует номер и сохранит хеш
             )
             
             # Удаляем запись подтверждения
@@ -327,7 +395,7 @@ class RegisterConfirmView(views.APIView):
                 "user": {
                     "id": user.id,
                     "username": user.username,
-                    "phone": str(user.phone),
+                    "phone": str(confirmation.phone),  # Возвращаем оригинальный номер из подтверждения
                     "role": user.role,
                     "is_active": user.is_active,
                     "phone_verified": user.phone_verified
@@ -337,16 +405,20 @@ class RegisterConfirmView(views.APIView):
 
 class AuthorizationView(views.APIView):
     def post(self, request):
-        serializer = LoginSerializer(data=request.data, context={'request': request})
+        serializer = AuthorizationSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             user = serializer.validated_data['user']
             refresh = RefreshToken.for_user(user)
+            
+            # Получаем телефон через связь с UserPhone
+            phone = user.phone  # Используем property из модели User
+            
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
                 'user_id': user.id,
                 'username': user.username,
-                'phone': str(user.phone)
+                'phone': phone if phone else None
             })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -356,92 +428,15 @@ class PhoneLoginView(APIView):
         if serializer.is_valid():
             user = serializer.validated_data['user']
             refresh = RefreshToken.for_user(user)
+            
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
                 'user_id': user.id,
-                'phone': str(user.phone)
+                'username': user.username,
+                'phone': user.phone  # Используем property из модели User
             })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class SendVerificationCodeView(APIView):
-    def post(self, request):
-        phone = request.data.get('phone')
-        if not phone:
-            return Response(
-                {"error": "Укажите номер телефона"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Удаляем все нецифровые символы и добавляем + в начале
-        phone = '+' + ''.join(filter(str.isdigit, phone))
-
-        try:
-            user = User.objects.get(phone=phone)
-        except User.DoesNotExist:
-            return Response(
-                {"error": "Пользователь не найден"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        # Проверяем, не запрашивали ли код недавно
-        last_code = PhoneVerification.objects.filter(
-            user=user,
-            created_at__gte=timezone.now() - timedelta(minutes=1)
-        ).first()
-
-        if last_code:
-            return Response(
-                {"error": "Повторный код можно запросить через 1 минуту"},
-                status=status.HTTP_429_TOO_MANY_REQUESTS
-            )
-
-        # Генерируем 6-значный код
-        code = str(random.randint(100000, 999999))
-
-        # Сохраняем код в базу
-        PhoneVerification.objects.create(
-            user=user,
-            code=code,
-            is_used=False
-        )
-
-        # Если DEBUG=True, выводим код в консоль (для тестов)
-        if settings.DEBUG:
-            print(f"\n🔴 Код подтверждения для {phone}: {code}\n")
-            return Response(
-                {"message": "Код отправлен (тестовый режим)", "code": code},
-                status=status.HTTP_200_OK
-            )
-
-        # Отправляем SMS через Textbelt
-        try:
-            response = requests.post(
-                'https://textbelt.com/text',
-                {
-                    'phone': phone,
-                    'message': f'Ваш код подтверждения: {code}',
-                    'key': 'textbelt'  # Бесплатный ключ (лимит 1 SMS/день)
-                }
-            )
-            data = response.json()
-
-            if data.get('success'):
-                return Response(
-                    {"message": "Код отправлен на ваш телефон"},
-                    status=status.HTTP_200_OK
-                )
-            else:
-                return Response(
-                    {"error": f"Ошибка Textbelt: {data.get('error', 'Unknown error')}"},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-
-        except Exception as e:
-            return Response(
-                {"error": f"Ошибка при отправке SMS: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
 
 class VerifyPhoneView(APIView):
     def post(self, request):

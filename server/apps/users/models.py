@@ -9,6 +9,49 @@ from django.utils import timezone
 from datetime import timedelta
 import uuid
 from server.settings.environments.storage_backends import YandexMediaStorage
+from cryptography.fernet import Fernet
+import base64
+import hashlib
+from django.conf import settings
+
+class UserPhone(models.Model):
+    user = models.OneToOneField(
+        'User',
+        on_delete=models.CASCADE,
+        related_name='phone_data'
+    )
+    encrypted_phone = models.BinaryField()
+    phone_hash = models.CharField(max_length=64, unique=True)  # Для поиска без расшифровки
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Телефон пользователя"
+        verbose_name_plural = "Телефоны пользователей"
+    
+    @staticmethod
+    def generate_key():
+        """Генерирует ключ шифрования из SECRET_KEY"""
+        secret_key = settings.SECRET_KEY.encode()
+        return base64.urlsafe_b64encode(secret_key.ljust(32)[:32])
+    
+    @property
+    def phone(self):
+        """Дешифрует номер телефона"""
+        fernet = Fernet(self.generate_key())
+        try:
+            decrypted = fernet.decrypt(self.encrypted_phone)
+            return decrypted.decode()
+        except:
+            return None
+    
+    @phone.setter
+    def phone(self, value):
+        """Шифрует номер телефона"""
+        fernet = Fernet(self.generate_key())
+        self.encrypted_phone = fernet.encrypt(value.encode())
+        # Сохраняем хеш для поиска
+        self.phone_hash = hashlib.sha256(value.encode()).hexdigest()
 
 class PhoneConfirmation(models.Model):
     phone = PhoneNumberField(region='RU', unique=True)
@@ -37,14 +80,13 @@ class User(AbstractUser, PermissionsMixin):
     # Основные поля
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, null=True, blank=True)
     username = models.CharField(_('username'), max_length=150, unique=True)
-    email = models.EmailField(_('email address'), unique=True, null=True, blank=True)
-    phone = PhoneNumberField(_('phone number'), region='RU', unique=True, null=True, blank=True)
+    email = models.EmailField(_('email address'), null=True, blank=True)
     verification_code = models.CharField(max_length=6, null=True, blank=True)
     
     # Персональные данные
     first_name = models.CharField(_('first name'), max_length=150, blank=True)
     last_name = models.CharField(_('last name'), max_length=150, blank=True)
-    middle_name = models.CharField(_('middle name'), max_length=150, blank=True)
+    middle_name = models.CharField(_('middle name'), null=True, max_length=150, blank=True)
     avatar = models.ImageField(
         upload_to='avatars/',
         storage=YandexMediaStorage(),
@@ -52,7 +94,6 @@ class User(AbstractUser, PermissionsMixin):
         blank=True
     )
 
-    
     # Статусы
     is_active = models.BooleanField(_('active'), default=True)
     is_verified = models.BooleanField(_('verified'), default=False)
@@ -85,24 +126,42 @@ class User(AbstractUser, PermissionsMixin):
     has_unread_notifications = models.BooleanField(_('has unread notifications'), default=False)
     
     # Настройки
-    USERNAME_FIELD = 'phone'
-    REQUIRED_FIELDS = ['username', 'email']
+    USERNAME_FIELD = 'username'  # Изменяем с 'phone' на 'username'
+    REQUIRED_FIELDS = ['email']  # Убираем 'username' так как он теперь USERNAME_FIELD
     
     class Meta:
         verbose_name = _('user')
         verbose_name_plural = _('users')
         ordering = ['-date_joined']
         indexes = [
-            models.Index(fields=['phone']),
+            # Убираем индекс для phone, так как его больше нет в этой модели
             models.Index(fields=['email']),
             models.Index(fields=['username']),
             models.Index(fields=['role']),
             models.Index(fields=['is_blocked']),
         ]
     
-    def __str__(self):
-        return f"{self.get_full_name()} ({self.phone})" if self.phone else self.username
+    # def __str__(self):
+    #     phone = self.phone if hasattr(self, 'phone_data') else None
+    #     return f"{self.get_full_name()} ({phone})" if phone else self.username
+
+    # Добавляем property для доступа к телефону
+    @property
+    def phone(self):
+        """Возвращает номер телефона пользователя"""
+        if hasattr(self, 'phone_data'):
+            return self.phone_data.phone
+        return None
     
+    @phone.setter
+    def phone(self, value):
+        """Устанавливает номер телефона пользователя"""
+        if hasattr(self, 'phone_data'):
+            phone_data = self.phone_data
+            phone_data.phone = value
+            phone_data.save()
+        else:
+            UserPhone.objects.create(user=self, phone=value)
     def get_full_name(self):
         return ' '.join(filter(None, [self.last_name, self.first_name, self.middle_name]))
     
@@ -157,20 +216,6 @@ class UserActivityLog(models.Model):
     
     def __str__(self):
         return f"{self.user} - {self.get_action_display()} at {self.created_at}"
-
-class PhoneVerification(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='phone_verifications')
-    code = models.CharField(max_length=6)
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_used = models.BooleanField(default=False)
-
-    class Meta:
-        ordering = ['-created_at']
-
-    def is_valid(self):
-        """Проверяет, действителен ли код"""
-        return not self.is_used and \
-               (timezone.now() - self.created_at < timedelta(minutes=5))
 
 class Group(models.Model):
     name = models.CharField(max_length=255)
