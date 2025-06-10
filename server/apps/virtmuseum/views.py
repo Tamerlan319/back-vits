@@ -5,6 +5,7 @@ from rest_framework.decorators import action
 from .models import Audience, Characteristic, AudienceImage
 from .serializers import AudienceCreateUpdateSerializer, CharacteristicCreateSerializer, AudienceImageCreateSerializer
 from .mixins import CacheListRetrieveMixin
+from django.conf import settings
 
 class AudienceImageViewSet(CacheListRetrieveMixin, viewsets.ModelViewSet):
     queryset = AudienceImage.objects.all()
@@ -27,25 +28,21 @@ class AudienceViewSet(CacheListRetrieveMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save()
-        # Инвалидируем кеш списка аудиторий
-        cache.delete("api_audiences_list")
+        if settings.CACHE_ENABLED:
+            cache.delete("api_audiences_list")
         return instance
 
     def perform_update(self, serializer):
         instance = serializer.save()
-        # Инвалидируем кеш объекта и списка
-        for key in self.get_cache_keys(instance):
-            cache.delete(key)
+        if settings.CACHE_ENABLED:
+            for key in self.get_cache_keys(instance):
+                cache.delete(key)
         return instance
 
     def perform_destroy(self, instance):
-        # Инвалидируем кеш перед удалением
-        for key in self.get_cache_keys(instance):
-            cache.delete(key)
-        
-        # Удаляем связанные данные
-        instance.characteristics.all().delete()
-        instance.images.all().delete()
+        if settings.CACHE_ENABLED:
+            for key in self.get_cache_keys(instance):
+                cache.delete(key)
         instance.delete()
 
     @action(detail=False, methods=['post'])

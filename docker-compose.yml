@@ -1,0 +1,23 @@
+services:
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    profiles:  # Запускается только с профилем production
+      - production
+
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    environment:
+      - DEBUG=${DEBUG:-False}  # Передаем DEBUG из переменных окружения
+    profiles:
+      - development
+      - production

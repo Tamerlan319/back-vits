@@ -108,15 +108,15 @@ class NewsViewSet(viewsets.ModelViewSet):
             instance.delete()
 
             # Отправка WebSocket уведомления
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                'news_updates',
-                {
-                    'type': 'news_update',
-                    'event': 'NEWS_DELETED',
-                    'data': {'id': news_id}
-                }
-            )
+            # channel_layer = get_channel_layer()
+            # async_to_sync(channel_layer.group_send)(
+            #     'news_updates',
+            #     {
+            #         'type': 'news_update',
+            #         'event': 'NEWS_DELETED',
+            #         'data': {'id': news_id}
+            #     }
+            # )
         except Exception as e:
             raise ValidationError(str(e))
 

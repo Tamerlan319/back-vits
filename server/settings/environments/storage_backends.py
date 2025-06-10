@@ -11,4 +11,4 @@ class PrivateMediaStorage(S3Boto3Storage):
     default_acl = settings.PRIVATE_AWS_DEFAULT_ACL
     querystring_auth = settings.PRIVATE_AWS_QUERYSTRING_AUTH
     location = settings.PRIVATE_MEDIA_LOCATION
-    file_overwrite = False  # Запретить перезапись файлов
+    file_overwrite = False

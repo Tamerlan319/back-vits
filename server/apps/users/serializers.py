@@ -15,7 +15,7 @@ import hashlib
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'phone', 'first_name', 'last_name', 'email', 'is_active', 'avatar']
+        fields = ['id', 'role', 'username', 'phone', 'first_name', 'last_name', 'email', 'is_active', 'avatar']
         
 class VKAuthSerializer(serializers.Serializer):
     code = serializers.CharField(required=True)

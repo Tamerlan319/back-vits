@@ -63,7 +63,6 @@ class CategoryRelatedField(serializers.RelatedField):
         elif isinstance(data, str):
             category, created = Category.objects.get_or_create(
                 name=data, 
-                defaults={'description': 'Автоматически созданная категория'}
             )
             return category
         raise ValidationError("Категория должна быть ID (число) или названием (строка)")
