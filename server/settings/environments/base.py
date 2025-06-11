@@ -66,7 +66,7 @@ SMS_SENDER_NAME = "vits"
 SECRET_KEY = 'django-insecure-3zyo8&mht8vs9q-1dcfc74zzuw55_zsbudgcr4^k2m4g1pnz(a'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = []
 
@@ -124,10 +124,13 @@ EMAIL_HOST_USER = '@gmail.com'  # Ваш Gmail
 EMAIL_HOST_PASSWORD = ''  # Пароль от Gmail или пароль приложения
 DEFAULT_FROM_EMAIL = '@gmail.com'
 
+# Использовать http-only куки для JWT (False для dev, True для production)
+USE_JWT_COOKIES = True
+
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'ROTATE_REFRESH_TOKENS': False,
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,  # Важно для безопасности
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': False,
 
@@ -147,10 +150,13 @@ SIMPLE_JWT = {
 
     'JTI_CLAIM': 'jti',
 
-    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
-    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=60),
-    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
-    
+    # Cookie settings
+    'AUTH_COOKIE': 'refresh_token',  # Cookie name for refresh token
+    'AUTH_COOKIE_DOMAIN': None,      # Set to your domain in production
+    'AUTH_COOKIE_SECURE': False,     # True in production (HTTPS only)
+    'AUTH_COOKIE_HTTP_ONLY': True,   # Prevent JavaScript access
+    'AUTH_COOKIE_PATH': '/',         # Cookie path
+    'AUTH_COOKIE_SAMESITE': 'Lax',   # Protection against CSRF
 }
 
 # Настройки для drf-spectacular
@@ -280,10 +286,21 @@ AUTHENTICATION_BACKENDS = [
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'vitsdb',
+        'USER': 'vitsuser',
+        'PASSWORD': '123321Ts_@',
+        'HOST': 'localhost',
+        'PORT': '',
     }
 }
 

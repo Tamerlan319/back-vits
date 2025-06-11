@@ -33,6 +33,306 @@ from urllib.parse import urlparse, parse_qs, urlunparse
 import os
 from django.core.files.base import ContentFile
 
+from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
+
+from rest_framework import serializers
+from .models import User, Group, PhoneConfirmation, UserPhone
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth import authenticate
+from django.utils import timezone
+from datetime import timedelta
+import random
+import phonenumbers
+from phonenumber_field.serializerfields import PhoneNumberField
+from .models import User, UserActivityLog
+from django.utils.translation import gettext_lazy as _
+import base64
+import hashlib
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'role', 'username', 'phone', 'first_name', 'last_name', 'email', 'is_active', 'avatar']
+        
+class VKAuthSerializer(serializers.Serializer):
+    code = serializers.CharField(required=True)
+    state = serializers.CharField(required=False)
+
+class GroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Group
+        fields = '__all__'
+
+class RegisterInitSerializer(serializers.Serializer):
+    username = serializers.CharField(required=True)
+    phone = PhoneNumberField(region='RU')
+    first_name = serializers.CharField(required=False)
+    last_name = serializers.CharField(required=False)
+    middle_name = serializers.CharField(required=False)  # Добавляем отчество
+    password = serializers.CharField(write_only=True, validators=[validate_password])
+    password2 = serializers.CharField(write_only=True)
+    
+    def validate(self, data):
+        from django.core.exceptions import ValidationError
+        
+        if data['password'] != data['password2']:
+            raise serializers.ValidationError({"password": "Пароли не совпадают"})
+        if User.objects.filter(username=data['username']).exists():
+            raise serializers.ValidationError({"username": "Это имя пользователя уже занято"})
+        
+        # Проверяем телефон по хешу
+        phone_hash = hashlib.sha256(str(data['phone']).encode()).hexdigest()
+        if UserPhone.objects.filter(phone_hash=phone_hash).exists():
+            raise serializers.ValidationError({"phone": "Этот телефон уже зарегистрирован"})
+        
+        return data
+
+class RegisterConfirmSerializer(serializers.Serializer):
+    phone = serializers.CharField()
+    code = serializers.CharField(max_length=6)
+
+    def validate(self, data):
+        try:
+            confirmation = PhoneConfirmation.objects.get(phone=data['phone'])
+            if confirmation.is_expired():
+                confirmation.delete()
+                raise serializers.ValidationError("Срок действия кода истёк")
+            if confirmation.code != data['code']:
+                raise serializers.ValidationError("Неверный код подтверждения")
+            data['confirmation'] = confirmation
+        except PhoneConfirmation.DoesNotExist:
+            raise serializers.ValidationError("Не найдена запись для подтверждения")
+        return data
+
+from django.contrib.auth import authenticate
+
+class AuthorizationSerializer(serializers.Serializer):
+    phone = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+    
+    def validate(self, attrs):
+        # Находим пользователя по хешу телефона
+        phone_hash = hashlib.sha256(attrs['phone'].encode()).hexdigest()
+        try:
+            user_phone = UserPhone.objects.get(phone_hash=phone_hash)
+            user = user_phone.user
+        except UserPhone.DoesNotExist:
+            raise serializers.ValidationError("Неверный номер телефона или пароль.")
+        
+        user = authenticate(
+            request=self.context.get('request'),
+            username=user.username,  # Аутентифицируем по username
+            password=attrs['password']
+        )
+        
+        if not user:
+            raise serializers.ValidationError("Неверный номер телефона или пароль.")
+        
+        attrs['user'] = user
+        return attrs
+
+class PhoneLoginSerializer(serializers.Serializer):
+    phone = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+    
+    def validate(self, attrs):
+        # 1. Находим пользователя по хешу телефона
+        phone_hash = hashlib.sha256(attrs['phone'].encode()).hexdigest()
+        try:
+            user_phone = UserPhone.objects.get(phone_hash=phone_hash)
+            user = user_phone.user
+        except UserPhone.DoesNotExist:
+            raise serializers.ValidationError("Неверный номер телефона или пароль.")
+        
+        # 2. Проверяем пароль
+        if not user.check_password(attrs['password']):
+            raise serializers.ValidationError("Неверный номер телефона или пароль.")
+        
+        # 3. Проверяем подтверждение телефона
+        if not user.phone_verified:
+            raise serializers.ValidationError("Телефон не подтвержден.")
+        
+        # 4. Проверяем активность аккаунта
+        if not user.is_active:
+            raise serializers.ValidationError("Аккаунт неактивен.")
+        
+        attrs['user'] = user
+        return attrs
+
+class AdminUserListSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+    role_display = serializers.CharField(source='get_role_display', read_only=True)
+    status = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = User
+        fields = [
+            'uuid',
+            'username',
+            'full_name',
+            'email',
+            'phone',
+            'role',
+            'role_display',
+            'is_active',
+            'is_blocked',
+            'date_joined',
+            'last_login',
+            'status'
+        ]
+    
+    def get_full_name(self, obj):
+        return obj.get_full_name()
+    
+    def get_status(self, obj):
+        if obj.is_blocked:
+            return _("Blocked")
+        return _("Active") if obj.is_active else _("Inactive")
+
+class AdminUserDetailSerializer(serializers.ModelSerializer):
+    activity_logs = serializers.SerializerMethodField()
+    blocked_by = serializers.StringRelatedField()
+    
+    class Meta:
+        model = User
+        fields = [
+            'uuid',
+            'username',
+            'first_name',
+            'last_name',
+            'middle_name',
+            'email',
+            'phone',
+            'role',
+            'is_active',
+            'is_blocked',
+            'blocked_at',
+            'blocked_reason',
+            'blocked_by',
+            'date_joined',
+            'last_login',
+            'phone_verified',
+            'is_verified',
+            'activity_logs'
+        ]
+        read_only_fields = [
+            'uuid',
+            'date_joined',
+            'last_login',
+            'phone_verified',
+            'is_verified',
+            'activity_logs'
+        ]
+    
+    def get_activity_logs(self, obj):
+        from .models import UserActivityLog
+        logs = UserActivityLog.objects.filter(user=obj).order_by('-created_at')[:10]
+        return UserActivityLogSerializer(logs, many=True).data
+
+class AdminUserUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'first_name',
+            'last_name',
+            'middle_name',
+            'email',
+            'role',
+            'is_active',
+            'is_blocked',
+            'blocked_reason'
+        ]
+    
+    def validate(self, data):
+        request = self.context.get('request')
+        
+        # Проверка на блокировку
+        if 'is_blocked' in data and data['is_blocked']:
+            if not data.get('blocked_reason'):
+                raise serializers.ValidationError(
+                    _("Block reason is required when blocking a user")
+                )
+            if not request.user.has_perm('users.block_user'):
+                raise serializers.ValidationError(
+                    _("You don't have permission to block users")
+                )
+        
+        # Проверка изменения роли
+        if 'role' in data and data['role'] != self.instance.role:
+            if not request.user.has_perm('users.change_role'):
+                raise serializers.ValidationError(
+                    _("You don't have permission to change user roles")
+                )
+        
+        return data
+
+class UserActivityLogSerializer(serializers.ModelSerializer):
+    action_display = serializers.CharField(source='get_action_display', read_only=True)
+    
+    class Meta:
+        model = UserActivityLog
+        fields = [
+            'action',
+            'action_display',
+            'ip_address',
+            'created_at',
+            'metadata'
+        ]
+
+class UserSearchSerializer(serializers.Serializer):
+    query = serializers.CharField(required=False)
+    role = serializers.ChoiceField(
+        choices=User.Role.choices,
+        required=False
+    )
+    is_active = serializers.BooleanField(required=False)
+    is_blocked = serializers.BooleanField(required=False)
+    date_joined_after = serializers.DateField(required=False)
+    date_joined_before = serializers.DateField(required=False)
+
+class TokenRefreshView(APIView):
+    def post(self, request):
+        refresh_token = request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE'])
+        
+        if not refresh_token:
+            return Response(
+                {"error": "Refresh token is missing"}, 
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        try:
+            refresh = RefreshToken(refresh_token)
+            access_token = str(refresh.access_token)
+            
+            # Создаем новый refresh token (ротация токенов)
+            new_refresh = RefreshToken.for_user(refresh.user)
+            
+            response = Response(
+                {"access": access_token},
+                status=status.HTTP_200_OK
+            )
+            
+            # Устанавливаем новый refresh token в cookie
+            response.set_cookie(
+                key=settings.SIMPLE_JWT['AUTH_COOKIE'],
+                value=str(new_refresh),
+                max_age=settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds(),
+                secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
+                httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
+                samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+                path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH']
+            )
+            
+            return response
+            
+        except TokenError as e:
+            return Response(
+                {"error": str(e)}, 
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
 def generate_pkce():
     """Генерация code_verifier и code_challenge для PKCE"""
     code_verifier = secrets.token_urlsafe(96)
@@ -118,7 +418,6 @@ class VKAuthCallbackView(APIView):
                 headers={'Content-Type': 'application/x-www-form-urlencoded'}
             )
 
-            # Проверяем статус ответа
             if response.status_code != 200:
                 error_msg = response.json().get('error_description', 'VK API error')
                 return Response({"error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
@@ -225,14 +524,35 @@ class VKAuthCallbackView(APIView):
 
             # Генерируем JWT токены
             refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
 
-            params = {
-                'access_token': str(refresh.access_token),
-                'refresh_token': str(refresh),
-                'user': UserSerializer(user).data
-            }
-            # Вариант 1: Редирект с параметрами в URL
-            return redirect(f"{settings.FRONT_VK_CALLBACK}?{urlencode(params)}")
+            # Создаем ответ с редиректом
+            response = redirect(f"{settings.FRONT_VK_CALLBACK}?access_token={access_token}")
+            if settings.USE_JWT_COOKIES:
+                # Устанавливаем refresh token в http-only cookie
+                response.set_cookie(
+                    key=settings.SIMPLE_JWT['AUTH_COOKIE'],
+                    value=refresh_token,
+                    max_age=settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds(),
+                    secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
+                    httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
+                    samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+                    path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH']
+                )
+
+                return response
+            else:
+                # Генерируем JWT токены
+                refresh = RefreshToken.for_user(user)
+
+                params = {
+                    'access_token': str(refresh.access_token),
+                    'refresh_token': str(refresh),
+                    'user': UserSerializer(user).data
+                }
+                # Вариант 1: Редирект с параметрами в URL
+                return redirect(f"{settings.FRONT_VK_CALLBACK}?{urlencode(params)}")
 
         except requests.exceptions.RequestException as e:
             return Response({"error": f"VK API request failed: {str(e)}"},
@@ -306,10 +626,10 @@ class RegisterInitView(views.APIView):
             )
             
             # # Отправка SMS
-            # if settings.DEBUG:
-            #     print(f"Код подтверждения для {data['phone']}: {code}")
-            # else:
-            self._send_sms_via_exolve(data['phone'], code)
+            if settings.DEBUG:
+                print(f"Код подтверждения для {data['phone']}: {code}")
+            else:
+                self._send_sms_via_exolve(data['phone'], code)
                 
             return Response({
                 "status": "success",
@@ -383,7 +703,7 @@ class RegisterConfirmView(views.APIView):
             # Создаем запись с телефоном
             UserPhone.objects.create(
                 user=user,
-                phone=str(confirmation.phone)  # Это автоматически зашифрует номер и сохранит хеш
+                phone=normalize_phone(confirmation.phone)  # сохраняем без +
             )
             
             # Удаляем запись подтверждения
@@ -428,14 +748,34 @@ class PhoneLoginView(APIView):
         if serializer.is_valid():
             user = serializer.validated_data['user']
             refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
             
-            return Response({
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
+            response_data = {
+                'access': access_token,
                 'user_id': user.id,
                 'username': user.username,
-                'phone': user.phone  # Используем property из модели User
-            })
+                'phone': user.phone
+            }
+            
+            response = Response(response_data)
+            
+            # Добавляем refresh token в куки только если USE_JWT_COOKIES=True
+            if settings.USE_JWT_COOKIES:
+                response.set_cookie(
+                    key=settings.SIMPLE_JWT['AUTH_COOKIE'],
+                    value=refresh_token,
+                    max_age=settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds(),
+                    secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
+                    httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
+                    samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+                    path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH']
+                )
+            else:
+                # В режиме разработки отправляем refresh token в теле ответа
+                response_data['refresh'] = refresh_token
+            
+            return response
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class VerifyPhoneView(APIView):
@@ -602,3 +942,17 @@ class AdminUserStatsView(generics.GenericAPIView):
         stats['registrations_last_30_days'] = registrations
         
         return Response(stats)
+
+class LogoutView(APIView):
+    def post(self, request):
+        try:
+            refresh_token = request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE'])
+            if refresh_token:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            
+            response = Response({"message": "Successfully logged out"})
+            response.delete_cookie(settings.SIMPLE_JWT['AUTH_COOKIE'])
+            return response
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

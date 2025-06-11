@@ -12,6 +12,10 @@ from django.utils.translation import gettext_lazy as _
 import base64
 import hashlib
 
+def normalize_phone(phone):
+    phone = phone.strip().lstrip('0').lstrip('+')  # удалить пробелы, ведущий 0 и плюс
+    return '+' + phone
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -36,15 +40,15 @@ class RegisterInitSerializer(serializers.Serializer):
     password2 = serializers.CharField(write_only=True)
     
     def validate(self, data):
-        from django.core.exceptions import ValidationError
-        
         if data['password'] != data['password2']:
             raise serializers.ValidationError({"password": "Пароли не совпадают"})
+        
         if User.objects.filter(username=data['username']).exists():
             raise serializers.ValidationError({"username": "Это имя пользователя уже занято"})
         
-        # Проверяем телефон по хешу
-        phone_hash = hashlib.sha256(str(data['phone']).encode()).hexdigest()
+        normalized_phone = str(data['phone'])  # уже форматированный номер с "+"
+        phone_hash = hashlib.sha256(normalized_phone.encode()).hexdigest()
+        
         if UserPhone.objects.filter(phone_hash=phone_hash).exists():
             raise serializers.ValidationError({"phone": "Этот телефон уже зарегистрирован"})
         
@@ -55,8 +59,10 @@ class RegisterConfirmSerializer(serializers.Serializer):
     code = serializers.CharField(max_length=6)
 
     def validate(self, data):
+        data['phone'] = normalize_phone(data['phone'])  # теперь без +
         try:
-            confirmation = PhoneConfirmation.objects.get(phone=data['phone'])
+            phone = normalize_phone(data['phone'])  # Строка, которую ты получаешь
+            confirmation = PhoneConfirmation.objects.get(phone=phone)
             if confirmation.is_expired():
                 confirmation.delete()
                 raise serializers.ValidationError("Срок действия кода истёк")
@@ -74,8 +80,8 @@ class AuthorizationSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
     
     def validate(self, attrs):
-        # Находим пользователя по хешу телефона
-        phone_hash = hashlib.sha256(attrs['phone'].encode()).hexdigest()
+        normalized_phone = normalize_phone(attrs['phone'])
+        phone_hash = hashlib.sha256(normalized_phone.encode()).hexdigest()
         try:
             user_phone = UserPhone.objects.get(phone_hash=phone_hash)
             user = user_phone.user
@@ -99,25 +105,22 @@ class PhoneLoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
     
     def validate(self, attrs):
-        # 1. Находим пользователя по хешу телефона
-        phone_hash = hashlib.sha256(attrs['phone'].encode()).hexdigest()
+        normalized_phone = normalize_phone(attrs['phone'])
+        phone_hash = hashlib.sha256(normalized_phone.encode()).hexdigest()
         try:
             user_phone = UserPhone.objects.get(phone_hash=phone_hash)
             user = user_phone.user
         except UserPhone.DoesNotExist:
             raise serializers.ValidationError("Неверный номер телефона или пароль.")
         
-        # 2. Проверяем пароль
-        if not user.check_password(attrs['password']):
+        user = authenticate(
+            request=self.context.get('request'),
+            username=user.username,
+            password=attrs['password']
+        )
+        
+        if not user:
             raise serializers.ValidationError("Неверный номер телефона или пароль.")
-        
-        # 3. Проверяем подтверждение телефона
-        if not user.phone_verified:
-            raise serializers.ValidationError("Телефон не подтвержден.")
-        
-        # 4. Проверяем активность аккаунта
-        if not user.is_active:
-            raise serializers.ValidationError("Аккаунт неактивен.")
         
         attrs['user'] = user
         return attrs
