@@ -153,10 +153,10 @@ SIMPLE_JWT = {
     # Cookie settings
     'AUTH_COOKIE': 'refresh_token',  # Cookie name for refresh token
     'AUTH_COOKIE_DOMAIN': None,      # Set to your domain in production
-    'AUTH_COOKIE_SECURE': True,     # True in production (HTTPS only)
     'AUTH_COOKIE_HTTP_ONLY': True,   # Prevent JavaScript access
     'AUTH_COOKIE_PATH': '/',         # Cookie path
-    'AUTH_COOKIE_SAMESITE': 'Lax',   # Protection against CSRF
+    'AUTH_COOKIE_SECURE': False,
+    'AUTH_COOKIE_SAMESITE': 'None',  # Обязательно для кросс-доменных запросов
 }
 
 # Настройки для drf-spectacular
