@@ -1,16 +1,12 @@
 [Unit]
-Description=gunicorn daemon for Django project
+Description=gunicorn daemon for back-vits Django project
 After=network.target
 
 [Service]
 User=root
 Group=www-data
-WorkingDirectory=/root/project_root/server
-Environment="PATH=/root/project_root/venv/bin"
-ExecStart=/root/project_root/venv/bin/gunicorn \
-    --workers 3 \
-    --bind unix:/run/gunicorn.sock \
-    server.wsgi:application
+WorkingDirectory=/root/back-vits/server
+ExecStart=/root/back-vits/venv/bin/gunicorn --workers 3 --bind unix:/run/gunicorn.sock server.wsgi:application
 
 [Install]
 WantedBy=multi-user.target
