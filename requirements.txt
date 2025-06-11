@@ -20,5 +20,3 @@ drf-spectacular
 psycopg2-binary
 django-redis
 psycopg
-postgresql
-postgresql-contrib
