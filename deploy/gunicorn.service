@@ -12,7 +12,7 @@ ExecStart=/root/back-vits/venv/bin/gunicorn \
     --access-logfile - \
     --workers 3 \
     --bind unix:/root/back-vits/server.sock \
-    wsgi:application
+    server.wsgi:application
 
 [Install]
 WantedBy=multi-user.target
