@@ -6,7 +6,13 @@ After=network.target
 User=root
 Group=www-data
 WorkingDirectory=/root/back-vits
-ExecStart=/root/back-vits/venv/bin/gunicorn --access-logfile - --workers 3 --bind unix:/root/back-vits/server.sock server.wsgi:application
+Environment="PYTHONPATH=/root/back-vits"
+Environment="DJANGO_SETTINGS_MODULE=server.settings"
+ExecStart=/root/back-vits/venv/bin/gunicorn \
+    --access-logfile - \
+    --workers 3 \
+    --bind unix:/root/back-vits/server.sock \
+    server.wsgi:application
 
 [Install]
 WantedBy=multi-user.target

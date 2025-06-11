@@ -12,3 +12,13 @@ gunicorn==21.2.0
 django-storages
 boto3
 django-cryptography
+dotenv
+django-debug-toolbar
+django-filter
+django-cors-headers
+drf-spectacular
+psycopg2-binary
+django-redis
+psycopg
+postgresql
+postgresql-contrib

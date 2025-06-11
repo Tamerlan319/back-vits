@@ -153,7 +153,7 @@ SIMPLE_JWT = {
     # Cookie settings
     'AUTH_COOKIE': 'refresh_token',  # Cookie name for refresh token
     'AUTH_COOKIE_DOMAIN': None,      # Set to your domain in production
-    'AUTH_COOKIE_SECURE': False,     # True in production (HTTPS only)
+    'AUTH_COOKIE_SECURE': True,     # True in production (HTTPS only)
     'AUTH_COOKIE_HTTP_ONLY': True,   # Prevent JavaScript access
     'AUTH_COOKIE_PATH': '/',         # Cookie path
     'AUTH_COOKIE_SAMESITE': 'Lax',   # Protection against CSRF
@@ -189,6 +189,7 @@ GROUP_SERVICE_URL = 'http://127.0.0.1:8000'  # или ваш URL
 SERVICE_AUTH_TOKEN = 'dev-internal-token'  # Общий для всех внутренних сервисов
 
 INSTALLED_APPS = [
+    'django.db.backends.postgresql',
     'server.apps.Application',
     'server.apps.Content',
     'debug_toolbar',
@@ -295,12 +296,12 @@ AUTHENTICATION_BACKENDS = [
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'vitsdb',
         'USER': 'vitsuser',
         'PASSWORD': '123321Ts_@',
-        'HOST': 'localhost',
-        'PORT': '',
+        'HOST': '46.149.67.175',
+        'PORT': '5432',
     }
 }
 
