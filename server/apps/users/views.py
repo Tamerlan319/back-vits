@@ -603,8 +603,12 @@ class RegisterInitView(views.APIView):
             phone_str = str(data['phone'])
             phone_hash = hashlib.sha256(phone_str.encode()).hexdigest()
             
+            # Проверка существующего UserPhone
             if UserPhone.objects.filter(phone_hash=phone_hash).exists():
-                raise serializers.ValidationError({"phone": "Этот телефон уже зарегистрирован"})
+                return Response(
+                    {"phone": "Этот номер уже зарегистрирован"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             
             # Удаляем старые подтверждения для этого номера
             PhoneConfirmation.objects.filter(phone=data['phone']).delete()
@@ -687,8 +691,11 @@ class RegisterConfirmView(views.APIView):
             data = serializer.validated_data
             confirmation = data['confirmation']
             reg_data = confirmation.registration_data
-            
-            # Создаем пользователя (без поля phone)
+
+            # Нормализуем телефон (убедитесь, что он в формате "+7...")
+            phone_str = str(confirmation.phone)
+            phone_hash = hashlib.sha256(phone_str.encode()).hexdigest()
+
             user = User.objects.create_user(
                 username=reg_data['username'],
                 first_name=reg_data.get('first_name', ''),
@@ -699,15 +706,15 @@ class RegisterConfirmView(views.APIView):
                 is_active=True,
                 role='guest'
             )
-            
-            # Создаем запись с телефоном
+
+            # Создаём UserPhone с phone_hash и encrypted_phone
             UserPhone.objects.create(
                 user=user,
+                phone_hash=phone_hash,
+                phone=phone_str  # Вызовет phone.setter, который зашифрует номер
             )
-            
-            # Удаляем запись подтверждения
+
             confirmation.delete()
-            
             return Response({
                 "status": "success",
                 "message": "Регистрация завершена",
@@ -720,7 +727,7 @@ class RegisterConfirmView(views.APIView):
                     "phone_verified": user.phone_verified
                 }
             })
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=400)
 
 class AuthorizationView(views.APIView):
     def post(self, request):

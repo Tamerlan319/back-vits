@@ -12,9 +12,14 @@ from django.utils.translation import gettext_lazy as _
 import base64
 import hashlib
 
-def normalize_phone(phone):
-    phone = phone.strip().lstrip('0').lstrip('+')  # удалить пробелы, ведущий 0 и плюс
-    return '+' + phone
+def normalize_phone(phone: str) -> str:
+    """Приводит телефон к формату '+7...' без пробелов и разделителей."""
+    cleaned = re.sub(r"[^\d]", "", phone)
+    if cleaned.startswith("8"):
+        return "+7" + cleaned[1:]
+    elif cleaned.startswith("7"):
+        return "+" + cleaned
+    return "+7" + cleaned  # или обработайте другие форматы
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:

@@ -21,7 +21,7 @@ class UserPhone(models.Model):
         related_name='phone_data'
     )
     encrypted_phone = models.BinaryField()
-    phone_hash = models.CharField(max_length=64, unique=True)  # Для поиска без расшифровки
+    phone_hash = models.CharField(max_length=64)  # Для поиска без расшифровки
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
