@@ -703,7 +703,6 @@ class RegisterConfirmView(views.APIView):
             # Создаем запись с телефоном
             UserPhone.objects.create(
                 user=user,
-                phone=normalize_phone(confirmation.phone)  # сохраняем без +
             )
             
             # Удаляем запись подтверждения

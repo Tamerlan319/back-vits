@@ -66,7 +66,7 @@ SMS_SENDER_NAME = "vits"
 SECRET_KEY = 'django-insecure-3zyo8&mht8vs9q-1dcfc74zzuw55_zsbudgcr4^k2m4g1pnz(a'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = []
 
@@ -167,7 +167,7 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,                                # Отключение схемы в ответах API
 }
 
-DEBUG_SOCKETS = True  # Флаг для включения/выключения WebSockets
+DEBUG_SOCKETS = False  # Флаг для включения/выключения WebSockets
 
 if DEBUG_SOCKETS:
     ASGI_APPLICATION = 'server.asgi.application'
