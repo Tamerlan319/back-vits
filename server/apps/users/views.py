@@ -542,7 +542,7 @@ class VKAuthCallbackView(APIView):
                         username: '{user.username}',
                         phone: '{user.phone if hasattr(user, 'phone') else ''}',
                         email: '{user.email if user.email else ''}'
-                    }}, '{settings.FRONTEND_ORIGIN}');
+                    }}, '{settings.FRONT_VK_CALLBACK}');
 
                     // Если используем куки, устанавливаем их через JS
                     {'document.cookie = `' + 
