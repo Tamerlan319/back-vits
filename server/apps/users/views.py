@@ -51,6 +51,9 @@ from django.utils.translation import gettext_lazy as _
 import base64
 import hashlib
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+from rest_framework_simplejwt.tokens import RefreshToken
 
 class TokenRefreshView(APIView):
     def post(self, request):
@@ -63,39 +66,40 @@ class TokenRefreshView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Create serializer and validate data
-        serializer = TokenRefreshSerializer(data={'refresh': refresh_token})
         try:
+            # Create serializer and validate data
+            serializer = TokenRefreshSerializer(data={'refresh': refresh_token})
             serializer.is_valid(raise_exception=True)
-        except Exception as e:
+            
+            # Get new tokens
+            new_access_token = serializer.validated_data.get('access')
+            new_refresh_token = serializer.validated_data.get('refresh')
+            
+            response_data = {
+                'access': new_access_token,
+            }
+            
+            response = Response(response_data)
+            
+            # Update refresh token in cookie
+            if new_refresh_token:
+                response.set_cookie(
+                    key=settings.SIMPLE_JWT['AUTH_COOKIE'],
+                    value=new_refresh_token,
+                    max_age=settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds(),
+                    secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
+                    httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
+                    samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+                    path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH']
+                )
+            
+            return response
+            
+        except TokenError as e:
             return Response(
                 {'detail': str(e)}, 
                 status=status.HTTP_401_UNAUTHORIZED
             )
-        
-        # Get new tokens
-        new_access_token = serializer.validated_data.get('access')
-        new_refresh_token = serializer.validated_data.get('refresh')
-        
-        response_data = {
-            'access': new_access_token,
-        }
-        
-        response = Response(response_data)
-        
-        # Update refresh token in cookie
-        if new_refresh_token:
-            response.set_cookie(
-                key=settings.SIMPLE_JWT['AUTH_COOKIE'],
-                value=new_refresh_token,
-                max_age=settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds(),
-                secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
-                httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
-                samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
-                path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH']
-            )
-        
-        return response
 
 def generate_pkce():
     """Генерация code_verifier и code_challenge для PKCE"""
@@ -728,31 +732,18 @@ class AdminUserStatsView(generics.GenericAPIView):
 
 class LogoutView(APIView):
     def post(self, request):
-        refresh_token = request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE'])
-        
-        if not refresh_token:
+        try:
+            refresh_token = request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE'])
+            if refresh_token:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            
+            response = Response({'detail': 'Successfully logged out.'})
+            response.delete_cookie(settings.SIMPLE_JWT['AUTH_COOKIE'])
+            return response
+            
+        except Exception as e:
             return Response(
-                {"message": "No refresh token provided"},
+                {'detail': str(e)}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-        try:
-            token = RefreshToken(refresh_token)
-            token.blacklist()
-        except TokenError as e:
-            # Токен невалиден или уже в блэклисте
-            pass  # Можно логировать, но не прерывать выход
-
-        response = Response({"message": "Successfully logged out"})
-        
-        # Удаляем куку с теми же параметрами, что и при установке
-        response.delete_cookie(
-            settings.SIMPLE_JWT['AUTH_COOKIE'],
-            domain=settings.SIMPLE_JWT.get('AUTH_COOKIE_DOMAIN'),
-            path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH'],
-            secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
-            httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
-            samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
-        )
-        
-        return response

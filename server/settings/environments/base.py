@@ -190,6 +190,7 @@ GROUP_SERVICE_URL = 'http://127.0.0.1:8000'  # или ваш URL
 SERVICE_AUTH_TOKEN = 'dev-internal-token'  # Общий для всех внутренних сервисов
 
 INSTALLED_APPS = [
+    'rest_framework_simplejwt.token_blacklist',
     'django.db.backends.postgresql',
     'server.apps.Application',
     'server.apps.Content',
