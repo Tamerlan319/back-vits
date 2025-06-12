@@ -518,7 +518,6 @@ class RegisterConfirmView(views.APIView):
 
             # Создаём UserPhone с phone_hash и encrypted_phone
             UserPhone.objects.create(
-                user=user,
                 phone_hash=phone_hash,
                 phone=phone_str  # Вызовет phone.setter, который зашифрует номер
             )
@@ -530,7 +529,6 @@ class RegisterConfirmView(views.APIView):
                 "user": {
                     "id": user.id,
                     "username": user.username,
-                    "phone": str(confirmation.phone),  # Возвращаем оригинальный номер из подтверждения
                     "role": user.role,
                     "is_active": user.is_active,
                     "phone_verified": user.phone_verified
