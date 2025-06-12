@@ -90,7 +90,7 @@ REST_FRAMEWORK = {
         'server.apps.users.throttles.RegisterRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'register': '1/minute',  # 1 запрос в минуту с одного IP
+        'register': '5/minute',  # 1 запрос в минуту с одного IP
     }
 }
 
