@@ -373,6 +373,8 @@ class VKAuthInitView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+from django.http import HttpResponse
+
 class VKAuthCallbackView(APIView):
     def get(self, request):
         """Обрабатывает callback от VK"""
