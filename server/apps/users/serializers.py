@@ -11,6 +11,7 @@ from .models import User, UserActivityLog
 from django.utils.translation import gettext_lazy as _
 import base64
 import hashlib
+import re
 
 def normalize_phone(phone: str) -> str:
     """Приводит телефон к формату '+7...' без пробелов и разделителей."""
