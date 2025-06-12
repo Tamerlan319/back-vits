@@ -527,36 +527,43 @@ class VKAuthCallbackView(APIView):
             access_token = str(refresh.access_token)
             refresh_token = str(refresh)
 
-            # Формируем данные для перенаправления
-            params = {
-                'access': access_token,
-                'user_id': user.id,
-                'username': user.username,
-                'phone': user.phone if hasattr(user, 'phone') else None,
-                'email': user.email
-            }
+            # Создаем HTML-страницу, которая сохранит токены и закроет окно
+            html_response = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>VK Auth Complete</title>
+                <script>
+                    // Сохраняем токены так же, как при обычной авторизации
+                    window.opener.postMessage({{
+                        type: 'vk-auth-success',
+                        access: '{access_token}',
+                        user_id: {user.id},
+                        username: '{user.username}',
+                        phone: '{user.phone if hasattr(user, 'phone') else ''}',
+                        email: '{user.email if user.email else ''}'
+                    }}, '{settings.FRONTEND_ORIGIN}');
 
-            # Если не используем куки, добавляем refresh token в параметры
-            if not settings.USE_JWT_COOKIES:
-                params['refresh'] = refresh_token
+                    // Если используем куки, устанавливаем их через JS
+                    {'document.cookie = `' + 
+                    f"{settings.SIMPLE_JWT['AUTH_COOKIE']}={refresh_token}; " +
+                    f"max-age={settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()}; " +
+                    f"path={settings.SIMPLE_JWT['AUTH_COOKIE_PATH']}; " +
+                    f"{'secure; ' if settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'] else ''}" +
+                    f"sameSite={settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE']}; " +
+                    "`;" if settings.USE_JWT_COOKIES else ''}
 
-            # Создаем перенаправление с параметрами
-            redirect_url = f"{settings.FRONT_VK_CALLBACK}?{urlencode(params)}"
-            response = redirect(redirect_url)
+                    // Закрываем окно
+                    window.close();
+                </script>
+            </head>
+            <body>
+                <p>Authorization complete. You can close this window.</p>
+            </body>
+            </html>
+            """
 
-            # Если используем куки, устанавливаем refresh token в cookie
-            if settings.USE_JWT_COOKIES:
-                response.set_cookie(
-                    key=settings.SIMPLE_JWT['AUTH_COOKIE'],
-                    value=refresh_token,
-                    max_age=settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds(),
-                    secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
-                    httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
-                    samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
-                    path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH']
-                )
-
-            return response
+            return HttpResponse(html_response, content_type='text/html')
 
         except requests.exceptions.RequestException as e:
             return Response({"error": f"VK API request failed: {str(e)}"},
