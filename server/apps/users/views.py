@@ -460,7 +460,7 @@ class VKAuthCallbackView(APIView):
                             'fields': 'screen_name'
                         }
                     )
-                    # print(vk_response)
+                    
                     if username_response.status_code == 200:
                         vk_data_username = username_response.json().get('response', [{}])
 
@@ -496,7 +496,7 @@ class VKAuthCallbackView(APIView):
                         if vk_data_username.get('screen_name'):
                             user.username = vk_data_username['screen_name']
 
-                            # Установка аватара из URL
+                        # Установка аватара из URL
                         if vk_data.get('avatar'):
                             avatar_url = vk_data['avatar']
                             try:
@@ -527,10 +527,19 @@ class VKAuthCallbackView(APIView):
             access_token = str(refresh.access_token)
             refresh_token = str(refresh)
 
-            # Создаем ответ с редиректом
-            response = redirect(f"{settings.FRONT_VK_CALLBACK}?access_token={access_token}")
+            # Формируем ответ в том же формате, что и PhoneLoginView
+            response_data = {
+                'access': access_token,
+                'user_id': user.id,
+                'username': user.username,
+                'phone': user.phone if hasattr(user, 'phone') else None,
+                'email': user.email
+            }
+            
+            response = Response(response_data)
+            
+            # Добавляем refresh token в куки только если USE_JWT_COOKIES=True
             if settings.USE_JWT_COOKIES:
-                # Устанавливаем refresh token в http-only cookie
                 response.set_cookie(
                     key=settings.SIMPLE_JWT['AUTH_COOKIE'],
                     value=refresh_token,
@@ -540,19 +549,11 @@ class VKAuthCallbackView(APIView):
                     samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
                     path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH']
                 )
-
-                return response
             else:
-                # Генерируем JWT токены
-                refresh = RefreshToken.for_user(user)
-
-                params = {
-                    'access_token': str(refresh.access_token),
-                    'refresh_token': str(refresh),
-                    'user': UserSerializer(user).data
-                }
-                # Вариант 1: Редирект с параметрами в URL
-                return redirect(f"{settings.FRONT_VK_CALLBACK}?{urlencode(params)}")
+                # В режиме разработки отправляем refresh token в теле ответа
+                response_data['refresh'] = refresh_token
+            
+            return response
 
         except requests.exceptions.RequestException as e:
             return Response({"error": f"VK API request failed: {str(e)}"},
