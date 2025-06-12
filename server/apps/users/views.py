@@ -50,99 +50,49 @@ from .models import User, UserActivityLog
 from django.utils.translation import gettext_lazy as _
 import base64
 import hashlib
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 
 class TokenRefreshView(APIView):
-    """
-    Кастомный view для обновления JWT токенов с ротацией refresh token.
-    Ожидает refresh token ТОЛЬКО в HTTP-only cookie.
-    Возвращает новый access token в теле ответа и новый refresh token в cookie.
-    """
-    
     def post(self, request):
-        # 1. Получаем refresh token из cookies
-        refresh_token = request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE'])
+        # Получаем refresh token из куки или тела запроса
+        refresh_token = request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE']) if getattr(settings, 'USE_JWT_COOKIES', False) else request.data.get('refresh')
         
         if not refresh_token:
-            return Response(
-                {
-                    "error": True,
-                    "status_code": status.HTTP_401_UNAUTHORIZED,
-                    "message": "Refresh token is missing in cookies",
-                    "data": None
-                }, 
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-
+            return Response({'detail': 'Refresh token is missing.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Создаем сериализатор и проверяем данные
+        serializer = TokenRefreshSerializer(data={'refresh': refresh_token})
         try:
-            # 2. Валидируем refresh token
-            refresh = RefreshToken(refresh_token)
-            
-            # 3. Проверяем, не истек ли токен (доп. защита)
-            if refresh['exp'] < int(timezone.now().timestamp()):
-                raise TokenError("Refresh token has expired")
-            
-            # 4. Получаем пользователя из токена
-            user_id = refresh.payload.get('user_id')
-            if not user_id:
-                raise TokenError("Invalid token payload")
-            
-            # 5. Генерируем новые токены с ротацией
-            new_refresh = RefreshToken.for_user(refresh.user)
-            new_access = str(new_refresh.access_token)
-            
-            # 6. Формируем ответ
-            response_data = {
-                "error": False,
-                "status_code": status.HTTP_200_OK,
-                "message": "Tokens refreshed successfully",
-                "data": {
-                    "access": new_access,
-                    "user_id": user_id
-                }
-            }
-            
-            response = Response(response_data, status=status.HTTP_200_OK)
-            
-            # 7. Устанавливаем новый refresh token в HTTP-only cookie
+            serializer.is_valid(raise_exception=True)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Получаем новые токены
+        new_access_token = serializer.validated_data.get('access')
+        new_refresh_token = serializer.validated_data.get('refresh')
+        
+        response_data = {
+            'access': new_access_token,
+        }
+        
+        response = Response(response_data)
+        
+        # Обновляем refresh token в куки если нужно
+        if getattr(settings, 'USE_JWT_COOKIES', False) and new_refresh_token:
             response.set_cookie(
                 key=settings.SIMPLE_JWT['AUTH_COOKIE'],
-                value=str(new_refresh),
+                value=new_refresh_token,
                 max_age=settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds(),
                 secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
                 httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
                 samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
-                path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH'],
-                domain=settings.SIMPLE_JWT.get('AUTH_COOKIE_DOMAIN')
+                path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH']
             )
-            
-            # 8. Инвалидация старого refresh token (опционально)
-            try:
-                refresh.blacklist()
-            except Exception as e:
-                print(f"Error blacklisting token: {e}")
-            
-            return response
-            
-        except TokenError as e:
-            return Response(
-                {
-                    "error": True,
-                    "status_code": status.HTTP_401_UNAUTHORIZED,
-                    "message": str(e),
-                    "data": None
-                }, 
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        except Exception as e:
-            return Response(
-                {
-                    "error": True,
-                    "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    "message": "Internal server error",
-                    "data": None
-                }, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        elif new_refresh_token:
+            # В режиме разработки отправляем refresh token в теле ответа
+            response_data['refresh'] = new_refresh_token
+        
+        return response
 
 def generate_pkce():
     """Генерация code_verifier и code_challenge для PKCE"""
