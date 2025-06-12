@@ -951,14 +951,31 @@ class AdminUserStatsView(generics.GenericAPIView):
 
 class LogoutView(APIView):
     def post(self, request):
+        refresh_token = request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE'])
+        
+        if not refresh_token:
+            return Response(
+                {"message": "No refresh token provided"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         try:
-            refresh_token = request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE'])
-            if refresh_token:
-                token = RefreshToken(refresh_token)
-                token.blacklist()
-            
-            response = Response({"message": "Successfully logged out"})
-            response.delete_cookie(settings.SIMPLE_JWT['AUTH_COOKIE'])
-            return response
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+        except TokenError as e:
+            # Токен невалиден или уже в блэклисте
+            pass  # Можно логировать, но не прерывать выход
+
+        response = Response({"message": "Successfully logged out"})
+        
+        # Удаляем куку с теми же параметрами, что и при установке
+        response.delete_cookie(
+            settings.SIMPLE_JWT['AUTH_COOKIE'],
+            domain=settings.SIMPLE_JWT.get('AUTH_COOKIE_DOMAIN'),
+            path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH'],
+            secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
+            httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
+            samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+        )
+        
+        return response
