@@ -402,10 +402,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from .throttles import RegisterRateThrottle
-
 class RegisterInitView(views.APIView):
-    throttle_classes = [RegisterRateThrottle]
     def post(self, request):
         serializer = RegisterInitSerializer(data=request.data)
         if serializer.is_valid():
