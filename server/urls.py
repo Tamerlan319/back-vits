@@ -20,7 +20,7 @@ from server.apps.users.views import (
     AdminUserBlockView,
     AdminUserUnblockView,
     AdminUserStatsView,
-    TokenRefreshView
+    refresh_token_view
 )
 from server.apps.virtmuseum.views import AudienceViewSet, AudienceImageViewSet, CharacteristicViewSet #представления из сериса виртуального музея
 from server.apps.news.views import (
@@ -73,7 +73,7 @@ urlpatterns = [
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path("api/auth/refresh/", refresh_token_view, name="token_refresh"),
     path('api/register/init/', RegisterInitView.as_view(), name='register-init'),
     path('api/register/confirm/', RegisterConfirmView.as_view(), name='register-confirm'),
     path('api/login/', AuthorizationView.as_view(), name='login'),

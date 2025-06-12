@@ -52,47 +52,43 @@ import base64
 import hashlib
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 
-class TokenRefreshView(APIView):
-    def post(self, request):
-        # Получаем refresh token из куки или тела запроса
-        refresh_token = request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE']) if getattr(settings, 'USE_JWT_COOKIES', False) else request.data.get('refresh')
-        
-        if not refresh_token:
-            return Response({'detail': 'Refresh token is missing.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Создаем сериализатор и проверяем данные
-        serializer = TokenRefreshSerializer(data={'refresh': refresh_token})
-        try:
-            serializer.is_valid(raise_exception=True)
-        except Exception as e:
-            return Response({'detail': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
-        
-        # Получаем новые токены
-        new_access_token = serializer.validated_data.get('access')
-        new_refresh_token = serializer.validated_data.get('refresh')
-        
-        response_data = {
-            'access': new_access_token,
-        }
-        
-        response = Response(response_data)
-        
-        # Обновляем refresh token в куки если нужно
-        if getattr(settings, 'USE_JWT_COOKIES', False) and new_refresh_token:
-            response.set_cookie(
-                key=settings.SIMPLE_JWT['AUTH_COOKIE'],
-                value=new_refresh_token,
-                max_age=settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds(),
-                secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
-                httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
-                samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
-                path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH']
-            )
-        elif new_refresh_token:
-            # В режиме разработки отправляем refresh token в теле ответа
-            response_data['refresh'] = new_refresh_token
-        
-        return response
+def refresh_token_view(request) -> Response:
+    # 1. Получаем refresh_token из куки
+    refresh_token = request.COOKIES.get("refresh_token")
+    
+    if not refresh_token:
+        raise ValidationError("Refresh token is missing")
+
+    # 2. Валидируем токен через сериализатор
+    serializer = TokenRefreshSerializer(data={"refresh": refresh_token})
+    
+    try:
+        serializer.is_valid(raise_exception=True)
+    except Exception as e:
+        return Response(
+            {"error": "Invalid or expired refresh token"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    # 3. Получаем новые токены
+    new_access = serializer.validated_data["access"]
+    new_refresh = serializer.validated_data.get("refresh")  # Будет новым, если ROTATE_REFRESH_TOKENS=True
+
+    # 4. Формируем ответ
+    response = Response(
+        {
+            "access_token": new_access,
+            "message": "Tokens refreshed successfully",
+        },
+        status=status.HTTP_200_OK,
+    )
+
+    # 5. Обновляем refresh_token в куки (если он изменился)
+    if new_refresh:
+        delete_refresh_cookie(response)
+        set_refresh_cookie(response, new_refresh)
+
+    return response
 
 def generate_pkce():
     """Генерация code_verifier и code_challenge для PKCE"""
