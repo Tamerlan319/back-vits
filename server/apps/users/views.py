@@ -527,18 +527,24 @@ class VKAuthCallbackView(APIView):
             access_token = str(refresh.access_token)
             refresh_token = str(refresh)
 
-            # Формируем ответ в том же формате, что и PhoneLoginView
-            response_data = {
+            # Формируем данные для перенаправления
+            params = {
                 'access': access_token,
                 'user_id': user.id,
                 'username': user.username,
                 'phone': user.phone if hasattr(user, 'phone') else None,
                 'email': user.email
             }
-            
-            response = Response(response_data)
-            
-            # Добавляем refresh token в куки только если USE_JWT_COOKIES=True
+
+            # Если не используем куки, добавляем refresh token в параметры
+            if not settings.USE_JWT_COOKIES:
+                params['refresh'] = refresh_token
+
+            # Создаем перенаправление с параметрами
+            redirect_url = f"{settings.FRONT_VK_CALLBACK}?{urlencode(params)}"
+            response = redirect(redirect_url)
+
+            # Если используем куки, устанавливаем refresh token в cookie
             if settings.USE_JWT_COOKIES:
                 response.set_cookie(
                     key=settings.SIMPLE_JWT['AUTH_COOKIE'],
@@ -549,10 +555,7 @@ class VKAuthCallbackView(APIView):
                     samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
                     path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH']
                 )
-            else:
-                # В режиме разработки отправляем refresh token в теле ответа
-                response_data['refresh'] = refresh_token
-            
+
             return response
 
         except requests.exceptions.RequestException as e:
