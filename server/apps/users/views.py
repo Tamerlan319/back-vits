@@ -53,76 +53,49 @@ import hashlib
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 
 class TokenRefreshView(APIView):
-    """
-    Кастомный view для обновления JWT токенов.
-    Поддерживает refresh token из куки или тела запроса.
-    Совместим с настройками USE_JWT_COOKIES и SIMPLE_JWT.
-    """
-    
     def post(self, request):
-        # 1. Получаем refresh token в зависимости от настроек
-        refresh_token = self._get_refresh_token(request)
+        # Get refresh token from cookies
+        refresh_token = request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE'])
         
         if not refresh_token:
             return Response(
-                {"detail": "Refresh token is missing"},
+                {'detail': 'Refresh token is missing in cookies.'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-        # 2. Валидируем токен и получаем новые токены
+        
+        # Create serializer and validate data
+        serializer = TokenRefreshSerializer(data={'refresh': refresh_token})
         try:
-            serializer = TokenRefreshSerializer(data={"refresh": refresh_token})
             serializer.is_valid(raise_exception=True)
-            
-            new_access = serializer.validated_data["access"]
-            new_refresh = serializer.validated_data.get("refresh")  # Будет новым, если ROTATE_REFRESH_TOKENS=True
-            
-        except (TokenError, InvalidToken) as e:
-            return Response(
-                {"detail": str(e)},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
         except Exception as e:
             return Response(
-                {"detail": "Could not refresh token"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {'detail': str(e)}, 
+                status=status.HTTP_401_UNAUTHORIZED
             )
-
-        # 3. Формируем ответ
+        
+        # Get new tokens
+        new_access_token = serializer.validated_data.get('access')
+        new_refresh_token = serializer.validated_data.get('refresh')
+        
         response_data = {
-            "access": new_access,
-            "user_id": request.user.id if request.user.is_authenticated else None,
+            'access': new_access_token,
         }
-
+        
         response = Response(response_data)
         
-        # 4. Обновляем refresh token в куках (если нужно)
-        if getattr(settings, 'USE_JWT_COOKIES', False) and new_refresh:
-            self._set_refresh_cookie(response, new_refresh)
-        elif new_refresh:
-            # В режиме без кук отправляем refresh в теле ответа
-            response_data["refresh"] = new_refresh
-
+        # Update refresh token in cookie
+        if new_refresh_token:
+            response.set_cookie(
+                key=settings.SIMPLE_JWT['AUTH_COOKIE'],
+                value=new_refresh_token,
+                max_age=settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds(),
+                secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
+                httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
+                samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+                path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH']
+            )
+        
         return response
-
-    def _get_refresh_token(self, request):
-        """Получаем refresh token из куки или тела запроса в зависимости от настроек"""
-        if getattr(settings, 'USE_JWT_COOKIES', False):
-            return request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE'])
-        return request.data.get('refresh')
-
-    def _set_refresh_cookie(self, response, token):
-        """Устанавливаем refresh token в куки с настройками из SIMPLE_JWT"""
-        response.set_cookie(
-            key=settings.SIMPLE_JWT['AUTH_COOKIE'],
-            value=token,
-            max_age=settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds(),
-            secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
-            httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
-            samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
-            path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH'],
-            domain=settings.SIMPLE_JWT.get('AUTH_COOKIE_DOMAIN'),
-        )
 
 def generate_pkce():
     """Генерация code_verifier и code_challenge для PKCE"""
