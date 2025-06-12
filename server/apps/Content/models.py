@@ -8,7 +8,7 @@ class Banner(models.Model):
         storage=YandexMediaStorage()
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    order = models.PositiveIntegerField(default=0)  # Добавлено поле для сортировки
+    order = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ['order']
@@ -35,12 +35,12 @@ class Achievement(models.Model):
         return self.title
 
 class Review(models.Model):
-    author = models.CharField(max_length=150)  # Просто текстовое поле
+    author = models.CharField(max_length=150)
     course = models.CharField(max_length=150)
     text = models.TextField()
     image = models.ImageField(
         upload_to='reviews/',
-        storage=YandexMediaStorage(),  # или оставьте DEFAULT_FILE_STORAGE
+        storage=YandexMediaStorage(),
         blank=True, 
         null=True
     )
@@ -53,3 +53,30 @@ class Review(models.Model):
 
     def __str__(self):
         return f"Отзыв от {self.author} о курсе {self.course}"
+
+class OrganizationDocument(models.Model):  
+    title = models.CharField(max_length=255, verbose_name='Название документа')
+    file = models.FileField(
+        upload_to='organization_documents/',
+        storage=YandexMediaStorage(),
+        verbose_name='Файл документа'
+    )
+
+    class Meta:
+        verbose_name = 'Документ организации'
+        verbose_name_plural = 'Документы организации'
+
+    def __str__(self):
+        return f"{self.get_document_type_display()}: {self.title}"
+
+class VideoContent(models.Model):    
+    title = models.CharField(max_length=200, verbose_name='Название видео')
+    video_url = models.URLField(verbose_name='Ссылка на видео (YouTube/Vimeo и т.д.)')
+    description = models.TextField(blank=True, verbose_name='Описание видео')
+
+    class Meta:
+        verbose_name = 'Видео контент'
+        verbose_name_plural = 'Видео контент'
+
+    def __str__(self):
+        return f"{self.title} ({self.get_page_display()})"

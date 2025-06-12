@@ -81,27 +81,36 @@ class RegisterConfirmSerializer(serializers.Serializer):
 from django.contrib.auth import authenticate
 
 class AuthorizationSerializer(serializers.Serializer):
-    phone = serializers.CharField()
-    password = serializers.CharField(write_only=True)
-    
+    username = serializers.CharField(
+        label="Логин",
+        write_only=True
+    )
+    password = serializers.CharField(
+        label="Пароль",
+        style={'input_type': 'password'},
+        trim_whitespace=False,
+        write_only=True
+    )
+
     def validate(self, attrs):
-        normalized_phone = normalize_phone(attrs['phone'])
-        phone_hash = hashlib.sha256(normalized_phone.encode()).hexdigest()
-        try:
-            user_phone = UserPhone.objects.get(phone_hash=phone_hash)
-            user = user_phone.user
-        except UserPhone.DoesNotExist:
-            raise serializers.ValidationError("Неверный номер телефона или пароль.")
-        
-        user = authenticate(
-            request=self.context.get('request'),
-            username=user.username,  # Аутентифицируем по username
-            password=attrs['password']
-        )
-        
-        if not user:
-            raise serializers.ValidationError("Неверный номер телефона или пароль.")
-        
+        username = attrs.get('username')
+        password = attrs.get('password')
+
+        if username and password:
+            user = authenticate(request=self.context.get('request'),
+                              username=username, password=password)
+
+            if not user:
+                msg = 'Неверные учетные данные.'
+                raise serializers.ValidationError(msg, code='authorization')
+            
+            if not user.is_active:
+                msg = 'Учетная запись отключена.'
+                raise serializers.ValidationError(msg, code='authorization')
+        else:
+            msg = 'Необходимо указать "логин" и "пароль".'
+            raise serializers.ValidationError(msg, code='authorization')
+
         attrs['user'] = user
         return attrs
 

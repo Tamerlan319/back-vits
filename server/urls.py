@@ -9,7 +9,7 @@ from server.apps.users.views import (
     GroupView, 
     UserView, 
     AuthorizationView, 
-    PhoneLoginView, 
+    # PhoneLoginView, 
     VerifyPhoneView,
     RegisterInitView, 
     RegisterConfirmView,
@@ -37,7 +37,7 @@ from server.apps.proftesting.views import (
     CompleteTestView,
     TestResultView
 )
-from server.apps.Content.views import BannerViewSet, AchievementViewSet, ReviewViewSet
+from server.apps.Content.views import BannerViewSet, AchievementViewSet, ReviewViewSet, OrganizationDocumentViewSet, VideoContentViewSet
 from server.apps.Application.views import ApplicationViewSet, ApplicationAttachmentViewSet, get_application_types
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
@@ -58,6 +58,8 @@ router.register(r'api/programs', ProgramViewSet, basename='programs')
 router.register(r'api/banners', BannerViewSet, basename='banner')
 router.register(r'api/achievements', AchievementViewSet, basename='achievement')
 router.register(r'api/reviews', ReviewViewSet, basename='review')
+router.register(r'api/documents', OrganizationDocumentViewSet, basename='documents')
+router.register(r'api/videos', VideoContentViewSet, basename='videos')
 router.register(r'api/events', EventViewSet, basename='events')
 router.register(r'api/applications', ApplicationViewSet, basename='application')
 router.register(r'api/application-attachments', ApplicationAttachmentViewSet, basename='application-attachment')
@@ -73,7 +75,8 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/register/init/', RegisterInitView.as_view(), name='register-init'),
     path('api/register/confirm/', RegisterConfirmView.as_view(), name='register-confirm'),
-    path('api/login/phone/', PhoneLoginView.as_view(), name='phone_login'),
+    path('api/login/', AuthorizationView.as_view(), name='login'),
+    # path('api/login/phone/', PhoneLoginView.as_view(), name='phone_login'),
     path('api/question-groups/', QuestionGroupsView.as_view(), name='question-groups'),
     path('api/questions/', QuestionsView.as_view(), name='questions'),
     path('api/start-test/', StartTestView.as_view(), name='start-test'),
@@ -90,5 +93,5 @@ urlpatterns = [
     path('api/admin/stats/', AdminUserStatsView.as_view(), name='admin-stats'),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# if settings.DEBUG:
+#     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

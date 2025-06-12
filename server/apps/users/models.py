@@ -15,11 +15,6 @@ import hashlib
 from django.conf import settings
 
 class UserPhone(models.Model):
-    user = models.OneToOneField(
-        'User',
-        on_delete=models.CASCADE,
-        related_name='phone_data'
-    )
     encrypted_phone = models.BinaryField()
     phone_hash = models.CharField(max_length=64)  # Для поиска без расшифровки
     created_at = models.DateTimeField(auto_now_add=True)
