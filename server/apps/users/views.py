@@ -464,7 +464,7 @@ class RegisterInitView(views.APIView):
             cleaned_phone = '7' + cleaned_phone
         
         # Формируем текст сообщения
-        text = f"Ваш код подтверждения: {code}"
+        text = f"Привет, это сайт tamik.surge.sh, ваш код подтверждения: ---{code}--- Спасибо что пользуетесь нашим сервисом ;D"
         
         # Подготовка данных для запроса
         payload = {
