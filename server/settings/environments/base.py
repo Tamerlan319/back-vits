@@ -43,7 +43,7 @@ PRIVATE_MEDIA_LOCATION = 'protected'  # Папка в приватном бак�
 # VK OAuth 2.1https://www.pythonanywhere.com/user/Tamik327/files/home/Tamik327/back-vits/server/settings
 VK_CLIENT_ID = '53621398'
 VK_CLIENT_SECRET = 'd99d7316d99d7316d99d731615daaf4180dd99dd99d7316b1ae015d6901a7ff146ec7fe'
-VK_REDIRECT_URI = 'https://tamik327.pythonanywhere.com/auth/vk/callback/'
+VK_REDIRECT_URI = 'https://vits44.ru/auth/vk/callback/'
 VK_API_VERSION = '5.199'
 VK_AUTH_URL = "https://id.vk.com/authorize"
 VK_TOKEN_URL = "https://id.vk.com/oauth2/auth"  # Ключевое изменение!
