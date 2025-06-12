@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework import routers
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from server.apps.users.views import (
     GroupView, 
@@ -19,7 +19,8 @@ from server.apps.users.views import (
     AdminUserDetailView,
     AdminUserBlockView,
     AdminUserUnblockView,
-    AdminUserStatsView
+    AdminUserStatsView,
+    TokenRefreshView
 )
 from server.apps.virtmuseum.views import AudienceViewSet, AudienceImageViewSet, CharacteristicViewSet #представления из сериса виртуального музея
 from server.apps.news.views import (
