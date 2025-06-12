@@ -152,10 +152,10 @@ SIMPLE_JWT = {
 
     # Cookie settings
     'AUTH_COOKIE': 'refresh_token',  # Cookie name for refresh token
-    'AUTH_COOKIE_DOMAIN': None,      # Set to your domain in production
+    'AUTH_COOKIE_DOMAIN': 'tamik.surge.sh',      # Set to your domain in production
     'AUTH_COOKIE_HTTP_ONLY': True,   # Prevent JavaScript access
     'AUTH_COOKIE_PATH': '/',         # Cookie path
-    'AUTH_COOKIE_SECURE': False,
+    'AUTH_COOKIE_SECURE': True,
     'AUTH_COOKIE_SAMESITE': 'None',  # Обязательно для кросс-доменных запросов
 }
 
