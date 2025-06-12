@@ -52,43 +52,77 @@ import base64
 import hashlib
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 
-def refresh_token_view(request) -> Response:
-    # 1. Получаем refresh_token из куки
-    refresh_token = request.COOKIES.get("refresh_token")
+class TokenRefreshView(APIView):
+    """
+    Кастомный view для обновления JWT токенов.
+    Поддерживает refresh token из куки или тела запроса.
+    Совместим с настройками USE_JWT_COOKIES и SIMPLE_JWT.
+    """
     
-    if not refresh_token:
-        raise ValidationError("Refresh token is missing")
+    def post(self, request):
+        # 1. Получаем refresh token в зависимости от настроек
+        refresh_token = self._get_refresh_token(request)
+        
+        if not refresh_token:
+            return Response(
+                {"detail": "Refresh token is missing"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-    # 2. Валидируем токен через сериализатор
-    serializer = TokenRefreshSerializer(data={"refresh": refresh_token})
-    
-    try:
-        serializer.is_valid(raise_exception=True)
-    except Exception as e:
-        return Response(
-            {"error": "Invalid or expired refresh token"},
-            status=status.HTTP_401_UNAUTHORIZED,
+        # 2. Валидируем токен и получаем новые токены
+        try:
+            serializer = TokenRefreshSerializer(data={"refresh": refresh_token})
+            serializer.is_valid(raise_exception=True)
+            
+            new_access = serializer.validated_data["access"]
+            new_refresh = serializer.validated_data.get("refresh")  # Будет новым, если ROTATE_REFRESH_TOKENS=True
+            
+        except (TokenError, InvalidToken) as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        except Exception as e:
+            return Response(
+                {"detail": "Could not refresh token"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # 3. Формируем ответ
+        response_data = {
+            "access": new_access,
+            "user_id": request.user.id if request.user.is_authenticated else None,
+        }
+
+        response = Response(response_data)
+        
+        # 4. Обновляем refresh token в куках (если нужно)
+        if getattr(settings, 'USE_JWT_COOKIES', False) and new_refresh:
+            self._set_refresh_cookie(response, new_refresh)
+        elif new_refresh:
+            # В режиме без кук отправляем refresh в теле ответа
+            response_data["refresh"] = new_refresh
+
+        return response
+
+    def _get_refresh_token(self, request):
+        """Получаем refresh token из куки или тела запроса в зависимости от настроек"""
+        if getattr(settings, 'USE_JWT_COOKIES', False):
+            return request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE'])
+        return request.data.get('refresh')
+
+    def _set_refresh_cookie(self, response, token):
+        """Устанавливаем refresh token в куки с настройками из SIMPLE_JWT"""
+        response.set_cookie(
+            key=settings.SIMPLE_JWT['AUTH_COOKIE'],
+            value=token,
+            max_age=settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds(),
+            secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
+            httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
+            samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+            path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH'],
+            domain=settings.SIMPLE_JWT.get('AUTH_COOKIE_DOMAIN'),
         )
-
-    # 3. Получаем новые токены
-    new_access = serializer.validated_data["access"]
-    new_refresh = serializer.validated_data.get("refresh")  # Будет новым, если ROTATE_REFRESH_TOKENS=True
-
-    # 4. Формируем ответ
-    response = Response(
-        {
-            "access_token": new_access,
-            "message": "Tokens refreshed successfully",
-        },
-        status=status.HTTP_200_OK,
-    )
-
-    # 5. Обновляем refresh_token в куки (если он изменился)
-    if new_refresh:
-        delete_refresh_cookie(response)
-        set_refresh_cookie(response, new_refresh)
-
-    return response
 
 def generate_pkce():
     """Генерация code_verifier и code_challenge для PKCE"""
