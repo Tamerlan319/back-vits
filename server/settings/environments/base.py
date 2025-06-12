@@ -86,6 +86,12 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 10,
     'EXCEPTION_HANDLER': 'server.apps.news.exceptions.custom_exception_handler',
     'DEFAULT_CACHE_TIMEOUT': 60 * 15,  # 15 минут
+        'DEFAULT_THROTTLE_CLASSES': [
+        'server.apps.users.throttles.RegisterRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'register': '1/minute',  # 1 запрос в минуту с одного IP
+    }
 }
 
 SPECTACULAR_SETTINGS = {

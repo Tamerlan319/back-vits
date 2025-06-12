@@ -402,7 +402,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from .throttles import RegisterRateThrottle
+
 class RegisterInitView(views.APIView):
+    throttle_classes = [RegisterRateThrottle]
     def post(self, request):
         serializer = RegisterInitSerializer(data=request.data)
         if serializer.is_valid():
@@ -464,7 +467,7 @@ class RegisterInitView(views.APIView):
             cleaned_phone = '7' + cleaned_phone
         
         # Формируем текст сообщения
-        text = f"Привет, это сайт tamik.surge.sh, ваш код подтверждения: ---{code}--- Спасибо что пользуетесь нашим сервисом ;D"
+        text = f"Hello, это world tamik.surge.sh, ваш код подтверждения: ---{code}--- Спасибо что пользуетесь нашим сервисом ;D"
         
         # Подготовка данных для запроса
         payload = {
