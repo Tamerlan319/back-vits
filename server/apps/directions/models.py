@@ -1,5 +1,7 @@
 from django.db import models
 from django.core.validators import MinLengthValidator, MaxLengthValidator, FileExtensionValidator
+from django.conf import settings
+from server.settings.environments.storage_backends import YandexMediaStorage
 
 class Department(models.Model):
     """Кафедры института"""
@@ -153,3 +155,41 @@ class ProgramFeature(models.Model):
         verbose_name = "Особенность"
         verbose_name_plural = "Особенности"
         ordering = ['order', 'title']
+
+class FacultyMember(models.Model):
+    """Модель преподавателя"""
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.CASCADE,
+        related_name='members',
+        verbose_name='Кафедра'
+    )
+    name = models.CharField(max_length=255, verbose_name='ФИО')
+    position = models.CharField(
+        max_length=50,
+        verbose_name='Должность'
+    )
+    degree = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name='Ученая степень/звание'
+    )
+    email = models.EmailField(blank=True, verbose_name='Email')
+    phone = models.CharField(max_length=50, blank=True, verbose_name='Телефон')
+    photo = models.ImageField(
+        upload_to='faculty/',
+        storage=YandexMediaStorage(),
+        blank=True,
+        null=True,
+        verbose_name='Фотография'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Преподаватель'
+        verbose_name_plural = 'Преподаватели'
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} ({self.get_position_display()})"

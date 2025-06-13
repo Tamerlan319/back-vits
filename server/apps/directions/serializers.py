@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from django.core.validators import validate_image_file_extension
-from .models import Department, EducationLevel, Program, PartnerCompany, ProgramFeature
+from .models import Department, EducationLevel, Program, PartnerCompany, ProgramFeature, FacultyMember
 
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -126,3 +126,51 @@ class DepartmentWithProgramsSerializer(serializers.ModelSerializer):
         ).filter(is_active=True)
         
         return ProgramSerializer(programs, many=True, context=self.context).data
+
+class DepartmentShortSerializer(serializers.ModelSerializer):
+    """Сокращенный сериализатор для кафедры"""
+    class Meta:
+        model = Department
+        fields = ['id', 'name']
+        read_only_fields = ['id', 'name']
+
+class FacultyMemberSerializer(serializers.ModelSerializer):
+    department = DepartmentShortSerializer(read_only=True)
+    department_id = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.all(),
+        source='department',
+        write_only=True,
+        required=True
+    )
+    photo_url = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = FacultyMember
+        fields = [
+            'id',
+            'department', 'department_id',
+            'name', 'position', 'degree',
+            'email', 'phone', 'photo', 'photo_url',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'photo_url']
+        extra_kwargs = {
+            'photo': {'write_only': True}
+        }
+
+    def get_photo_url(self, obj):
+        if obj.photo:
+            return self.context['request'].build_absolute_uri(obj.photo.url)
+        return None
+
+    def validate_position(self, value):
+        """Проверка должности"""
+        if len(value) < 3:
+            raise serializers.ValidationError("Должность должна содержать минимум 3 символа")
+        return value
+
+    def validate_phone(self, value):
+        """Проверка телефона"""
+        if value and not value.startswith('+'):
+            raise serializers.ValidationError("Телефон должен начинаться с '+'")
+        return value

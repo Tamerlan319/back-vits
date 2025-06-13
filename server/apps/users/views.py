@@ -396,10 +396,7 @@ class RegisterInitView(views.APIView):
             )
             
             # # Отправка SMS
-            if settings.DEBUG:
-                print(f"Код подтверждения для {data['phone']}: {code}")
-            else:
-                self._send_sms_via_exolve(data['phone'], code)
+            self._send_sms_via_exolve(data['phone'], code)
                 
             return Response({
                 "status": "success",
@@ -419,9 +416,9 @@ class RegisterInitView(views.APIView):
             cleaned_phone = '7' + cleaned_phone[1:]
         elif not cleaned_phone.startswith('7'):
             cleaned_phone = '7' + cleaned_phone
-        
+        print(f"Номер отправки {cleaned_phone}")
         # Формируем текст сообщения
-        text = f"Привет, это Высшая ИТ-школа. Код подтверждения: {code}. Спасибо, что вы с нами ;3"
+        text = f"Привет, это Высшая ИТ-школа. Код подтверждения: 1234. Спасибо, что вы с нами ;3"
         
         # Подготовка данных для запроса
         payload = {

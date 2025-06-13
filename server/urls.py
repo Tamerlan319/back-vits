@@ -27,7 +27,7 @@ from server.apps.news.views import (
     CategoryViewSet, TagViewSet, NewsViewSet, 
     CommentViewSet, LikeViewSet
 )#представления из сервиса новостей
-from server.apps.directions.views import DepartmentViewSet, ProgramViewSet
+from server.apps.directions.views import DepartmentViewSet, ProgramViewSet, FacultyMemberViewSet
 from server.apps.perscalendar.views import EventViewSet
 from server.apps.proftesting.views import (
     EducationLevelsView,
@@ -56,6 +56,7 @@ router.register(r'api/audience-images', AudienceImageViewSet, basename='audience
 router.register(r'api/characteristics', CharacteristicViewSet, basename='characteristics')
 router.register(r'api/departments', DepartmentViewSet, basename='departments')
 router.register(r'api/programs', ProgramViewSet, basename='programs')
+router.register(r'api/faculty', FacultyMemberViewSet, basename='faculty')
 router.register(r'api/banners', BannerViewSet, basename='banner')
 router.register(r'api/achievements', AchievementViewSet, basename='achievement')
 router.register(r'api/reviews', ReviewViewSet, basename='review')

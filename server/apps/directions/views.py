@@ -1,15 +1,16 @@
-from rest_framework import viewsets, filters, status
+from rest_framework import viewsets, filters, status, parsers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound, ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Department, EducationLevel, Program, PartnerCompany, ProgramFeature
+from .models import Department, EducationLevel, Program, PartnerCompany, ProgramFeature, FacultyMember
 from .serializers import (
     DepartmentSerializer, EducationLevelSerializer,
     ProgramSerializer, ProgramListSerializer,
-    PartnerCompanySerializer, ProgramFeatureSerializer, DepartmentWithProgramsSerializer
+    PartnerCompanySerializer, ProgramFeatureSerializer, DepartmentWithProgramsSerializer, FacultyMemberSerializer, DepartmentShortSerializer
 )
 from .filters import ProgramFilter
+from .permissions import IsAdmin
 
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.all().order_by('name')
@@ -116,3 +117,59 @@ class ProgramFeatureViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         return super().handle_exception(exc)
+
+class FacultyMemberViewSet(viewsets.ModelViewSet):
+    queryset = FacultyMember.objects.all().order_by('name')
+    serializer_class = FacultyMemberSerializer
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Фильтрация по кафедре
+        department_id = self.request.query_params.get('department')
+        if department_id:
+            queryset = queryset.filter(department_id=department_id)
+            
+        # Фильтрация по поисковому запросу
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search) |
+                Q(position__icontains=search) |
+                Q(degree__icontains=search)
+            )
+            
+        return queryset
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'departments']:
+            # Разрешаем доступ всем на просмотр
+            return [permissions.AllowAny()]
+        # Для всех изменяющих операций требуем права администратора
+        return [IsAdmin()]
+
+    def perform_create(self, serializer):
+        # Только админы могут создавать преподавателей
+        serializer.save()
+
+    def perform_update(self, serializer):
+        # Только админы могут обновлять преподавателей
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        # Только админы могут удалять преподавателей
+        try:
+            if instance.photo:
+                instance.photo.delete()
+            instance.delete()
+        except Exception as e:
+            print(f"Error deleting faculty member: {str(e)}")
+            raise
+
+    @action(detail=False, methods=['get'])
+    def departments(self, request):
+        """Список кафедр с преподавателями (доступно всем)"""
+        departments = Department.objects.prefetch_related('members').all()
+        serializer = DepartmentShortSerializer(departments, many=True)
+        return Response(serializer.data)
