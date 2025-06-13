@@ -67,7 +67,7 @@ SMS_SENDER_NAME = "vits"
 SECRET_KEY = 'django-insecure-3zyo8&mht8vs9q-1dcfc74zzuw55_zsbudgcr4^k2m4g1pnz(a'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = []
 
