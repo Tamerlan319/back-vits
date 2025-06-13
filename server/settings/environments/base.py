@@ -67,7 +67,7 @@ SMS_SENDER_NAME = "vits"
 SECRET_KEY = 'django-insecure-3zyo8&mht8vs9q-1dcfc74zzuw55_zsbudgcr4^k2m4g1pnz(a'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = []
 
@@ -126,7 +126,7 @@ EMAIL_HOST_PASSWORD = ''  # Пароль от Gmail или пароль прил
 DEFAULT_FROM_EMAIL = '@gmail.com'
 
 # Использовать http-only куки для JWT (False для dev, True для production)
-USE_JWT_COOKIES = True
+USE_JWT_COOKIES = False
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),

@@ -9,6 +9,7 @@ from .cors.permissions import EventPermission
 from .cors.services import GroupService
 from django.db.models import Q
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from django.utils import timezone
 
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all().select_related('creator')
@@ -27,11 +28,9 @@ class EventViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = super().get_queryset()
 
-        # Для неавторизованных пользователей - только глобальные события
         if not user.is_authenticated:
             return queryset.filter(event_type='global')
 
-        # Фильтрация для авторизованных пользователей
         if user.role == 'admin':
             return queryset.exclude(
                 Q(event_type='personal') & ~Q(creator=user))
@@ -43,7 +42,8 @@ class EventViewSet(viewsets.ModelViewSet):
                 Q(event_type='personal', creator=user))
         
         elif user.role == 'student':
-            user_groups = GroupService.get_user_groups(user.id)
+            # Используем локальные группы
+            user_groups = list(user.groups.values_list('id', flat=True))
             return queryset.filter(
                 Q(event_type='group', group_id__in=user_groups) |
                 Q(event_type='global') |
@@ -56,7 +56,7 @@ class EventViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         # Автоматически назначаем создателя события
-        serializer.save(creator=self.request.user)
+        serializer.save()
 
     @action(detail=True, methods=['get'])
     def occurrences(self, request, pk=None):
