@@ -83,4 +83,4 @@ class VideoContent(models.Model):
         verbose_name_plural = 'Видео контент'
 
     def __str__(self):
-        return f"{self.title} ({self.get_page_display()})"
+        return f"{self.title} ({self.title})"

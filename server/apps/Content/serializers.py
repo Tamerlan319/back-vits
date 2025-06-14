@@ -15,7 +15,7 @@ def validate_file_extension(value):
 def validate_file_size(value):
     limit = 5 * 1024 * 1024  # 10MB
     if value.size > limit:
-        raise ValidationError('Файл слишком большой. Максимальный размер - 5 МБ.')
+        raise ValidationError('Файл слишком большой. Максимальный размер - 10 МБ.')
 
 def validate_image_extension(value):
     ext = os.path.splitext(value.name)[1]
@@ -106,5 +106,5 @@ class OrganizationDocumentSerializer(serializers.ModelSerializer):
 class VideoContentSerializer(serializers.ModelSerializer):
     class Meta:
         model = VideoContent
-        fields = ['id', 'title', 'video_url', 'description']
+        fields = ['id', 'title', 'file', 'description']
         read_only_fields = []
