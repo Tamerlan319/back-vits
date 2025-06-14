@@ -417,8 +417,9 @@ class RegisterInitView(views.APIView):
         elif not cleaned_phone.startswith('7'):
             cleaned_phone = '7' + cleaned_phone
         print(f"Номер отправки {cleaned_phone}")
+        code_spaced = " ".join(list(str(code)))
         # Формируем текст сообщения
-        text = f"Привет, это Высшая ИТ-школа. Код подтверждения: 1234. Спасибо, что вы с нами ;3"
+        text = f"Ваш проверочный код: {code_spaced}. Никому не сообщайте этот код. С уважением, Высшая ИТ-школа."
         
         # Подготовка данных для запроса
         payload = {
