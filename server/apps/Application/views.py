@@ -19,8 +19,9 @@ import os
 
 @api_view(['GET'])
 def get_application_types(request):
-    types = Application.TYPE_CHOICES
-    data = [{'value': value, 'label': label} for value, label in types]
+    """Возвращает активные типы заявлений для выпадающих списков"""
+    types = ApplicationType.objects.filter(is_active=True).order_by('name')
+    data = [{'value': type.code, 'label': type.name} for type in types]
     return Response(data)
 
 class ApplicationTypeViewSet(viewsets.ModelViewSet):
@@ -36,16 +37,6 @@ class ApplicationTypeViewSet(viewsets.ModelViewSet):
         else:
             permission_classes = [IsAuthenticated, IsAdminUser]
         return [permission() for permission in permission_classes]
-    
-    @action(detail=True, methods=['post'])
-    def toggle_active(self, request, code=None):
-        """Переключение активности типа"""
-        if not request.user.is_admin:
-            raise PermissionDenied("Только администраторы могут изменять активность типов")
-        
-        app_type = self.get_object()
-        app_type.is_active = not app_type.is_active
-        app_type.save()
         
         return Response({
             'status': 'success',
