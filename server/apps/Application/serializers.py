@@ -9,12 +9,22 @@ class ApplicationTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ApplicationType
         fields = ['id', 'name', 'code']
-    
+        extra_kwargs = {
+            'code': {'validators': []}  # Отключаем стандартные валидаторы
+        }
+
     def validate_code(self, value):
+        # Проверка формата
         if not re.match(r'^[a-z0-9_]+$', value):
-            raise serializers.ValidationError(
-                "Код может содержать только строчные латинские буквы, цифры и подчеркивания"
-            )
+            raise ValidationError("Только строчные латинские буквы, цифры и подчеркивания")
+        
+        # Проверка уникальности
+        if self.instance and self.instance.code == value:
+            return value
+            
+        if ApplicationType.objects.filter(code=value).exists():
+            raise ValidationError("Тип с таким кодом уже существует")
+            
         return value
 
 class ApplicationAttachmentSerializer(serializers.ModelSerializer):

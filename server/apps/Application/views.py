@@ -17,45 +17,41 @@ from rest_framework.decorators import api_view
 from rest_framework.exceptions import PermissionDenied, ValidationError
 import os
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework import permissions
 
 @api_view(['GET'])
 def get_application_types(request):
     """Возвращает активные типы заявлений для выпадающих списков"""
-    types = ApplicationType.objects.filter(is_active=True).order_by('name')
+    types = ApplicationType.objects.all().order_by('name')
     data = [{'value': type.code, 'label': type.name} for type in types]
     return Response(data)
+
+class CustomAdminPermission(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.role == 'admin'
 
 class ApplicationTypeViewSet(viewsets.ModelViewSet):
     queryset = ApplicationType.objects.all().order_by('name')
     serializer_class = ApplicationTypeSerializer
     lookup_field = 'code'
+    permission_classes = [IsAuthenticated]  # Базовый доступ для всех авторизованных
     
     def get_permissions(self):
-        if self.request.method == 'POST' and self.action == 'create':
-            return [IsAdminUser()]
-        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
-            return [IsAdminUser()]
-        return [IsAuthenticated()]
-
-    @api_view(['GET', 'POST'])
-    def application_types(request):
-        if request.method == 'GET':
-            types = ApplicationType.objects.all().order_by('name')
-            data = [{'value': type.id, 'label': type.name} for type in types]
-            return Response(data)
+        # Для безопасных методов (GET, HEAD, OPTIONS) - доступ всем
+        if self.request.method in permissions.SAFE_METHODS:
+            return [IsAuthenticated()]
         
-        elif request.method == 'POST':
-            if not request.user.is_authenticated or request.user.role != 'admin':
-                return Response(
-                    {"error": True, "message": "Только администраторы могут создавать типы"},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-            
-            serializer = ApplicationTypeSerializer(data=request.data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Для изменяющих операций - проверяем роль admin
+        return [IsAuthenticated(), CustomAdminPermission()]
+
+    def create(self, request, *args, **kwargs):
+        # Дополнительная проверка в самом методе
+        if request.user.role != 'admin':
+            return Response(
+                {"error": True, "message": "Только администраторы могут создавать типы"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().create(request, *args, **kwargs)
 
 class ApplicationViewSet(viewsets.ModelViewSet):
     queryset = Application.objects.all().order_by('-created_at')
