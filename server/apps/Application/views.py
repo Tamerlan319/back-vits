@@ -16,6 +16,7 @@ from django.db.models import Q
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import PermissionDenied, ValidationError
 import os
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
 @api_view(['GET'])
 def get_application_types(request):
@@ -27,22 +28,12 @@ def get_application_types(request):
 class ApplicationTypeViewSet(viewsets.ModelViewSet):
     queryset = ApplicationType.objects.all().order_by('name')
     serializer_class = ApplicationTypeSerializer
-    permission_classes = [IsAuthenticated]
-    lookup_field = 'code'  # Для удобства используем code вместо id
+    lookup_field = 'code'
     
     def get_permissions(self):
-        """Только администраторы могут изменять типы"""
         if self.action in ['list', 'retrieve']:
-            permission_classes = [IsAuthenticated]
-        else:
-            permission_classes = [IsAuthenticated, IsAdminUser]
-        return [permission() for permission in permission_classes]
-        
-        return Response({
-            'status': 'success',
-            'is_active': app_type.is_active,
-            'message': f"Тип '{app_type.name}' теперь {'активен' if app_type.is_active else 'неактивен'}"
-        })
+            return [IsAuthenticated()]
+        return [IsAdminUser()]
 
 class ApplicationViewSet(viewsets.ModelViewSet):
     queryset = Application.objects.all().order_by('-created_at')
@@ -63,61 +54,25 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             return super().get_queryset()
         return super().get_queryset().filter(user=user)
     
-    def perform_create(self, serializer):
-        # Просто вызываем save(), user будет установлен в сериализаторе
-        serializer.save()
-    
-    @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=['patch'])
     def update_status(self, request, pk=None):
         if self.request.user.role != 'admin':
-            raise PermissionDenied("Только администраторы могут изменять статус заявлений")
+            return Response(
+                {"detail": "Только администраторы могут изменять статус"},
+                status=status.HTTP_403_FORBIDDEN
+            )
         
         application = self.get_object()
         serializer = self.get_serializer(application, data=request.data, partial=True)
-        
-        if serializer.is_valid():
-            old_status = application.status
-            new_status = serializer.validated_data.get('status', old_status)
-            comment = serializer.validated_data.get('admin_comment', '')
-            
-            if old_status != new_status:
-                ApplicationStatusLog.objects.create(
-                    application=application,
-                    changed_by=request.user,
-                    from_status=old_status,
-                    to_status=new_status,
-                    comment=comment
-                )
-            
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
-    def search(self, request):
-        query = request.query_params.get('q', '')
-        queryset = self.filter_queryset(self.get_queryset())
-        
-        if query:
-            queryset = queryset.filter(
-                Q(title__icontains=query) |
-                Q(description__icontains=query) |
-                Q(user__first_name__icontains=query) |
-                Q(user__last_name__icontains=query)
-            )
-        
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        
-        serializer = self.get_serializer(queryset, many=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(serializer.data)
 
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context['request'] = self.request
-        return context
+@api_view(['GET'])
+def get_application_types(request):
+    types = ApplicationType.objects.all().order_by('name')
+    data = [{'value': type.id, 'label': type.name} for type in types]
+    return Response(data)
 
 class ApplicationAttachmentViewSet(viewsets.ModelViewSet):
     queryset = ApplicationAttachment.objects.all()
