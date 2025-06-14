@@ -40,7 +40,7 @@ from server.apps.proftesting.views import (
     TestResultView
 )
 from server.apps.Content.views import BannerViewSet, AchievementViewSet, ReviewViewSet, OrganizationDocumentViewSet, VideoContentViewSet
-from server.apps.Application.views import ApplicationViewSet, ApplicationAttachmentViewSet, get_application_types
+from server.apps.Application.views import ApplicationViewSet, ApplicationAttachmentViewSet, get_application_types, ApplicationTypeViewSet
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 router = routers.DefaultRouter()
@@ -66,6 +66,7 @@ router.register(r'api/videos', VideoContentViewSet, basename='videos')
 router.register(r'api/events', EventViewSet, basename='events')
 router.register(r'api/applications', ApplicationViewSet, basename='application')
 router.register(r'api/application-attachments', ApplicationAttachmentViewSet, basename='application-attachment')
+router.register(r'application-types', ApplicationTypeViewSet, basename='application-type')
 
 urlpatterns = [
     path('admin/', admin.site.urls),

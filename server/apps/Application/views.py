@@ -3,12 +3,13 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Application, ApplicationAttachment, ApplicationStatusLog
+from .models import Application, ApplicationAttachment, ApplicationStatusLog, ApplicationType
 from .serializers import (
     ApplicationSerializer,
     ApplicationCreateSerializer,
     ApplicationStatusUpdateSerializer,
-    ApplicationAttachmentSerializer
+    ApplicationAttachmentSerializer,
+    ApplicationTypeSerializer
 )
 from server.apps.users.models import User
 from django.db.models import Q
@@ -21,6 +22,36 @@ def get_application_types(request):
     types = Application.TYPE_CHOICES
     data = [{'value': value, 'label': label} for value, label in types]
     return Response(data)
+
+class ApplicationTypeViewSet(viewsets.ModelViewSet):
+    queryset = ApplicationType.objects.all().order_by('name')
+    serializer_class = ApplicationTypeSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'code'  # Для удобства используем code вместо id
+    
+    def get_permissions(self):
+        """Только администраторы могут изменять типы"""
+        if self.action in ['list', 'retrieve']:
+            permission_classes = [IsAuthenticated]
+        else:
+            permission_classes = [IsAuthenticated, IsAdminUser]
+        return [permission() for permission in permission_classes]
+    
+    @action(detail=True, methods=['post'])
+    def toggle_active(self, request, code=None):
+        """Переключение активности типа"""
+        if not request.user.is_admin:
+            raise PermissionDenied("Только администраторы могут изменять активность типов")
+        
+        app_type = self.get_object()
+        app_type.is_active = not app_type.is_active
+        app_type.save()
+        
+        return Response({
+            'status': 'success',
+            'is_active': app_type.is_active,
+            'message': f"Тип '{app_type.name}' теперь {'активен' if app_type.is_active else 'неактивен'}"
+        })
 
 class ApplicationViewSet(viewsets.ModelViewSet):
     queryset = Application.objects.all().order_by('-created_at')

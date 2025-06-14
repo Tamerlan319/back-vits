@@ -1,9 +1,23 @@
 from rest_framework import serializers
 from django.core.validators import FileExtensionValidator
 from django.core.exceptions import ValidationError
-from .models import Application, ApplicationAttachment, ApplicationStatusLog
+from .models import Application, ApplicationAttachment, ApplicationStatusLog, ApplicationType
 from server.apps.users.serializers import UserSerializer
 import os
+
+class ApplicationTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ApplicationType
+        fields = ['id', 'name', 'code', 'is_active', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
+    
+    def validate_code(self, value):
+        """Проверка, что код содержит только допустимые символы"""
+        if not re.match(r'^[a-z0-9_]+$', value):
+            raise serializers.ValidationError(
+                "Код может содержать только строчные латинские буквы, цифры и подчеркивания"
+            )
+        return value
 
 class ApplicationAttachmentSerializer(serializers.ModelSerializer):
     file_url = serializers.SerializerMethodField()
@@ -62,7 +76,7 @@ class ApplicationStatusLogSerializer(serializers.ModelSerializer):
 class ApplicationSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
-    type_display = serializers.CharField(source='get_type_display', read_only=True)
+    type = ApplicationTypeSerializer(read_only=True)  # Изменяем на сериализатор типа
     attachments = ApplicationAttachmentSerializer(many=True, read_only=True)
     status_logs = ApplicationStatusLogSerializer(many=True, read_only=True)
     

@@ -9,6 +9,19 @@ from server.settings.environments.base import DEBUG_SOCKETS
 
 User = get_user_model()
 
+class ApplicationType(models.Model):
+    """Модель для хранения типов заявлений, управляемых администратором"""
+    name = models.CharField(max_length=100, verbose_name="Название типа")
+    code = models.SlugField(max_length=50, unique=True, verbose_name="Код типа")
+
+    class Meta:
+        verbose_name = "Тип заявления"
+        verbose_name_plural = "Типы заявлений"
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
 class Application(models.Model):
     STATUS_CHOICES = [
         ('pending', 'На рассмотрении'),
@@ -16,15 +29,13 @@ class Application(models.Model):
         ('rejected', 'Отклонено'),
     ]
     
-    TYPE_CHOICES = [
-        ('academic', 'Академический отпуск'),
-        ('translation', 'Перевод на другой факультет'),
-        ('reference', 'Справка об обучении'),
-        ('retake', 'Пересдача экзамента'),
-    ]
-    
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='applications')
-    type = models.CharField(max_length=50, choices=TYPE_CHOICES, verbose_name="Тип заявления")
+    type = models.ForeignKey(
+        ApplicationType, 
+        on_delete=models.PROTECT, 
+        related_name='applications',
+        verbose_name="Тип заявления"
+    )
     description = models.TextField(verbose_name="Текст заявления")
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending', verbose_name="Статус")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
