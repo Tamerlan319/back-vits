@@ -71,7 +71,7 @@ class OrganizationDocument(models.Model):
 
 class VideoContent(models.Model):    
     title = models.CharField(max_length=200, verbose_name='Название видео')
-        file = models.FileField(
+    file = models.FileField(
         upload_to='organization_documents/',
         storage=YandexMediaStorage(),
         verbose_name='Видео'
