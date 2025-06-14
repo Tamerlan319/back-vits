@@ -159,21 +159,21 @@ class NewsViewSet(viewsets.ModelViewSet):
         except Exception as e:
             raise ValidationError(str(e))
 
-        @action(detail=True, methods=['get'])
-        def comments(self, request, pk=None):
-            try:
-                news = self.get_object()
-                queryset = news.comments.all().
-                    
-                serializer = CommentSerializer(queryset, many=True)
-                return Response(serializer.data)
-            except Exception as e:
-                raise ValidationError(f"Ошибка при получении комментариев: {str(e)}")
+    @action(detail=True, methods=['get'])
+    def comments(self, request, pk=None):
+        try:
+            news = self.get_object()
+            queryset = news.comments.all().select_related('author')  # Убрали .filter(is_active=True)
+                
+            serializer = CommentSerializer(queryset, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            raise ValidationError(f"Ошибка при получении комментариев: {str(e)}")
 
-    def handle_exception(self, exc):
-        if isinstance(exc, ObjectDoesNotExist):
-            exc = NotFound("Новость не найдена")
-        return super().handle_exception(exc)
+        def handle_exception(self, exc):
+            if isinstance(exc, ObjectDoesNotExist):
+                exc = NotFound("Новость не найдена")
+            return super().handle_exception(exc)
 
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
