@@ -71,7 +71,11 @@ class OrganizationDocument(models.Model):
 
 class VideoContent(models.Model):    
     title = models.CharField(max_length=200, verbose_name='Название видео')
-    video_url = models.URLField(verbose_name='Ссылка на видео (YouTube/Vimeo и т.д.)')
+        file = models.FileField(
+        upload_to='organization_documents/',
+        storage=YandexMediaStorage(),
+        verbose_name='Видео'
+    )
     description = models.TextField(blank=True, verbose_name='Описание видео')
 
     class Meta:
