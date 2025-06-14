@@ -25,28 +25,12 @@ class ApplicationAttachmentSerializer(serializers.ModelSerializer):
         if not request:
             return None
         
+        # Генерируем подписанный URL (доступен только авторизованным пользователям)
         if obj.file and hasattr(obj.file, 'url'):
-            try:
-                s3_client = boto3.client(
-                    's3',
-                    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                    region_name=settings.AWS_S3_REGION_NAME
-                )
-                
-                presigned_url = s3_client.generate_presigned_url(
-                    'get_object',
-                    Params={
-                        'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
-                        'Key': obj.file.name
-                    },
-                    ExpiresIn=3600 * 24 * 7  # Ссылка действительна 1 час
-                )
-                return presigned_url
-            except ClientError as e:
-                print(f"Ошибка генерации ссылки: {e}")
-                return None
-        
+            url = obj.file.storage.url(
+                obj.file.name,
+            )
+            return url
         return None
     
     def validate_file(self, value):
