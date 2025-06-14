@@ -31,9 +31,31 @@ class ApplicationTypeViewSet(viewsets.ModelViewSet):
     lookup_field = 'code'
     
     def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            return [IsAuthenticated()]
-        return [IsAdminUser()]
+        if self.request.method == 'POST' and self.action == 'create':
+            return [IsAdminUser()]
+        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
+
+    @api_view(['GET', 'POST'])
+    def application_types(request):
+        if request.method == 'GET':
+            types = ApplicationType.objects.all().order_by('name')
+            data = [{'value': type.id, 'label': type.name} for type in types]
+            return Response(data)
+        
+        elif request.method == 'POST':
+            if not request.user.is_authenticated or request.user.role != 'admin':
+                return Response(
+                    {"error": True, "message": "Только администраторы могут создавать типы"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            serializer = ApplicationTypeSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ApplicationViewSet(viewsets.ModelViewSet):
     queryset = Application.objects.all().order_by('-created_at')
