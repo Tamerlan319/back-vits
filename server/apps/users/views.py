@@ -70,8 +70,6 @@ class TokenRefreshView(APIView):
             # Create serializer and validate data
             serializer = TokenRefreshSerializer(data={'refresh': refresh_token})
             serializer.is_valid(raise_exception=True)
-            refresh_token = RefreshToken(refresh_token)
-            refresh_token.blacklist()
             
             # Get new tokens
             new_access_token = serializer.validated_data.get('access')
@@ -409,22 +407,8 @@ class RegisterInitView(views.APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def _send_sms_via_exolve(self, phone, code):
-        """Отправка SMS через Exolve API с преобразованием цифр кода в слова"""
+        """Отправка SMS через Exolve API"""
         url = "https://api.exolve.ru/messaging/v1/SendSMS"
-        
-        # Словарь для преобразования цифр в слова
-        digit_to_word = {
-            '0': 'ноль',
-            '1': 'один',
-            '2': 'два',
-            '3': 'три',
-            '4': 'четыре',
-            '5': 'пять',
-            '6': 'шесть',
-            '7': 'семь',
-            '8': 'восемь',
-            '9': 'девять'
-        }
         
         # Нормализация номера телефона
         cleaned_phone = ''.join(filter(str.isdigit, str(phone)))
@@ -433,23 +417,19 @@ class RegisterInitView(views.APIView):
         elif not cleaned_phone.startswith('7'):
             cleaned_phone = '7' + cleaned_phone
         print(f"Номер отправки {cleaned_phone}")
-        
-        # Преобразуем цифры кода в слова через пробел
-        code_str = str(code)
-        code_words = " ".join([digit_to_word[digit] for digit in code_str])
-        
+        code_spaced = " ".join(list(str(code)))
         # Формируем текст сообщения
-        text = f"Ваш проверочный код: {code_words}. Никому не сообщайте этот код. С уважением, Высшая ИТ-школа."
+        text = f"Ваш проверочный код: {code_spaced}. Никому не сообщайте этот код. С уважением, Высшая ИТ-школа."
         
         # Подготовка данных для запроса
         payload = {
-            "number": settings.EXOLVE_SENDER_NAME,
+            "number": settings.EXOLVE_SENDER_NAME,  # Ваш номер отправителя из примера
             "destination": cleaned_phone,
             "text": text
         }
         
         headers = {
-            "Authorization": "Bearer " + settings.EXOLVE_API_KEY,
+            "Authorization": "Bearer " + settings.EXOLVE_API_KEY,  # Ваш токен из примера
             "Content-Type": "application/json"
         }
         
