@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User, Group, Student, Teacher, PhoneConfirmation, UserPhone
+from .models import User, Group, Student, Teacher, PhoneConfirmation, UserPhone, UserActivityLog
 
 class CustomUserAdmin(UserAdmin):
     list_display = ('username', 'email', 'role', 'is_active', 'phone_verified')
@@ -67,5 +67,5 @@ class TeacherAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'user__email', 'user__phone')
 
 admin.site.register(UserPhone)
-
+admin.site.register(UserActivityLog)
 admin.site.register(User, CustomUserAdmin)

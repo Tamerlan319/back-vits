@@ -20,7 +20,8 @@ from server.apps.users.views import (
     AdminUserBlockView,
     AdminUserUnblockView,
     AdminUserStatsView,
-    TokenRefreshView
+    TokenRefreshView,
+    LogoutView,
 )
 from server.apps.virtmuseum.views import AudienceViewSet, AudienceImageViewSet, CharacteristicViewSet #представления из сериса виртуального музея
 from server.apps.news.views import (
@@ -78,6 +79,7 @@ urlpatterns = [
     path('api/register/init/', RegisterInitView.as_view(), name='register-init'),
     path('api/register/confirm/', RegisterConfirmView.as_view(), name='register-confirm'),
     path('api/login/', AuthorizationView.as_view(), name='login'),
+    path('api/logout/', LogoutView.as_view(), name='logout'),
     # path('api/login/phone/', PhoneLoginView.as_view(), name='phone_login'),
     path('api/question-groups/', QuestionGroupsView.as_view(), name='question-groups'),
     path('api/questions/', QuestionsView.as_view(), name='questions'),
