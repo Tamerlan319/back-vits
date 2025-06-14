@@ -70,6 +70,8 @@ class TokenRefreshView(APIView):
             # Create serializer and validate data
             serializer = TokenRefreshSerializer(data={'refresh': refresh_token})
             serializer.is_valid(raise_exception=True)
+            refresh_token = RefreshToken(refresh_token)
+            refresh_token.blacklist()
             
             # Get new tokens
             new_access_token = serializer.validated_data.get('access')
@@ -549,7 +551,7 @@ class AuthorizationView(APIView):
             return response
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+
 class PhoneLoginView(APIView):
     def post(self, request):
         serializer = PhoneLoginSerializer(data=request.data, context={'request': request})
