@@ -66,7 +66,7 @@ router.register(r'api/videos', VideoContentViewSet, basename='videos')
 router.register(r'api/events', EventViewSet, basename='events')
 router.register(r'api/applications', ApplicationViewSet, basename='application')
 router.register(r'api/application-attachments', ApplicationAttachmentViewSet, basename='application-attachment')
-router.register(r'application-types', ApplicationTypeViewSet, basename='application-type')
+router.register(r'api/application-types', ApplicationTypeViewSet, basename='application-type')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
