@@ -1,0 +1,23 @@
+[0;1;32m●[0m nginx.service - A high performance web server and a reverse proxy server
+     Loaded: loaded (/lib/systemd/system/nginx.service; enabled; vendor preset: enabled)
+     Active: [0;1;32mactive (running)[0m since Wed 2025-06-11 23:57:45 MSK; 12h ago
+       Docs: man:nginx(8)
+    Process: 8901 ExecReload=/usr/sbin/nginx -g daemon on; master_process on; -s reload (code=exited, status=0/SUCCESS)
+   Main PID: 1050 (nginx)
+      Tasks: 2 (limit: 1067)
+     Memory: 7.1M
+        CPU: 20.904s
+     CGroup: /system.slice/nginx.service
+             ├─1050 "nginx: master process /usr/sbin/nginx -g daemon on; master_process on;"
+             └─8902 "nginx: worker process" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" ""
+
+Jun 11 23:58:37 5025653-qf70181 systemd[1]: Reloading A high performance web server and a reverse proxy server...
+Jun 11 23:58:37 5025653-qf70181 systemd[1]: Reloaded A high performance web server and a reverse proxy server.
+Jun 12 00:00:39 5025653-qf70181 systemd[1]: Reloading A high performance web server and a reverse proxy server...
+Jun 12 00:00:39 5025653-qf70181 systemd[1]: Reloaded A high performance web server and a reverse proxy server.
+Jun 12 00:02:40 5025653-qf70181 systemd[1]: Reloading A high performance web server and a reverse proxy server...
+Jun 12 00:02:40 5025653-qf70181 systemd[1]: Reloaded A high performance web server and a reverse proxy server.
+Jun 12 00:03:47 5025653-qf70181 systemd[1]: Reloading A high performance web server and a reverse proxy server...
+Jun 12 00:03:47 5025653-qf70181 systemd[1]: Reloaded A high performance web server and a reverse proxy server.
+Jun 12 12:38:15 5025653-qf70181 systemd[1]: Reloading A high performance web server and a reverse proxy server...
+Jun 12 12:38:15 5025653-qf70181 systemd[1]: Reloaded A high performance web server and a reverse proxy server.
