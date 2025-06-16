@@ -20,11 +20,10 @@ class IsAdminOrReadOnly(permissions.BasePermission):
     - Создание/редактирование только администраторам
     """
     def has_permission(self, request, view):
-        # Разрешаем GET, HEAD, OPTIONS запросы всем
         if request.method in permissions.SAFE_METHODS:
             return True
-
-        # POST, PUT, PATCH, DELETE только для админов
+        if view.action == 'like':  # Разрешаем like для всех авторизованных
+            return request.user.is_authenticated
         return request.user.is_authenticated and request.user.role == 'admin'
 
 class NewsCursorPagination(CursorPagination):
