@@ -620,7 +620,7 @@ class IsAdminRole(permissions.BasePermission):
 
 class AdminUserListView(generics.ListAPIView):
     serializer_class = AdminUserListSerializer
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser, IsAdminRole]
     pagination_class = AdminUserPagination
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['role', 'is_active', 'is_blocked']
@@ -630,7 +630,7 @@ class AdminUserListView(generics.ListAPIView):
 
 class AdminUserDetailView(generics.RetrieveUpdateAPIView):
     queryset = User.objects.all()
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser, IsAdminRole]
     lookup_field = 'uuid'
     
     def get_serializer_class(self):
@@ -665,7 +665,7 @@ class AdminUserDetailView(generics.RetrieveUpdateAPIView):
 
 class AdminUserBlockView(generics.UpdateAPIView):
     queryset = User.objects.all()
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser, IsAdminRole]
     lookup_field = 'uuid'
     
     def patch(self, request, *args, **kwargs):
@@ -699,7 +699,7 @@ class AdminUserBlockView(generics.UpdateAPIView):
 
 class AdminUserUnblockView(generics.UpdateAPIView):
     queryset = User.objects.all()
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser, IsAdminRole]
     lookup_field = 'uuid'
     
     def patch(self, request, *args, **kwargs):
@@ -723,7 +723,7 @@ class AdminUserUnblockView(generics.UpdateAPIView):
         )
 
 class AdminUserStatsView(generics.GenericAPIView):
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser, IsAdminRole]
     
     def get(self, request):
         from django.db.models import Count

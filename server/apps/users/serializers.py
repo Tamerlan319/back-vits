@@ -226,7 +226,13 @@ class AdminUserUpdateSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         request = self.context.get('request')
-        
+        user = request.user
+
+        # Проверка на администратора
+        if user.role != 'admin':
+            raise serializers.ValidationError(
+                _("You must be an admin to perform this action")
+            )
         # Проверка на блокировку
         if 'is_blocked' in data and data['is_blocked']:
             if not data.get('blocked_reason'):

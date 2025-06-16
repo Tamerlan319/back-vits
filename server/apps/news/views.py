@@ -26,6 +26,12 @@ class IsAdminOrReadOnly(permissions.BasePermission):
             return request.user.is_authenticated
         return request.user.is_authenticated and request.user.role == 'admin'
 
+    """Разрешает удаление/изменение только владельцам лайков"""
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return obj.user == request.user
+
 class NewsCursorPagination(CursorPagination):
     page_size = 10
     ordering = '-created_at'
@@ -210,7 +216,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 class LikeViewSet(viewsets.ModelViewSet):
     queryset = Like.objects.all()
     serializer_class = LikeSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]  # Обновлено!
 
     def perform_create(self, serializer):
         try:
@@ -226,6 +232,11 @@ class LikeViewSet(viewsets.ModelViewSet):
             serializer.save(user=self.request.user, news=news)
         except Exception as e:
             raise ValidationError(str(e))
+
+    def perform_destroy(self, instance):
+        # Проверка владельца уже в IsOwnerOrReadOnly
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def handle_exception(self, exc):
         if isinstance(exc, ObjectDoesNotExist):
