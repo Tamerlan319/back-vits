@@ -54,6 +54,7 @@ from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework import permissions
 
 class TokenRefreshView(APIView):
     def post(self, request):
@@ -769,3 +770,4 @@ class LogoutView(APIView):
                 {'detail': str(e)}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
+

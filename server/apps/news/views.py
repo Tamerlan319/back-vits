@@ -12,6 +12,7 @@ from django.shortcuts import get_object_or_404
 from django.core.exceptions import ObjectDoesNotExist
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from rest_framework import permissions
 
 class IsAdminOrReadOnly(permissions.BasePermission):
     """
@@ -216,7 +217,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 class LikeViewSet(viewsets.ModelViewSet):
     queryset = Like.objects.all()
     serializer_class = LikeSerializer
-    permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]  # Обновлено!
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]  # Обновлено!
 
     def perform_create(self, serializer):
         try:
