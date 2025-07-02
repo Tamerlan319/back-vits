@@ -1,4 +1,6 @@
 .env
+cert.crt 
+cert.key
 *.pyc
 __pycache__/
 server.settings.environments.base.py

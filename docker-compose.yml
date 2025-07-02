@@ -4,7 +4,7 @@ services:
     ports:
       - "6379:6379"
     restart: unless-stopped
-    profiles:  # Запускается только с профилем production
+    profiles:
       - production
 
   web:
@@ -17,7 +17,7 @@ services:
     depends_on:
       - redis
     environment:
-      - DEBUG=${DEBUG:-False}  # Передаем DEBUG из переменных окружения
+      - DEBUG=${DEBUG:-False}
     profiles:
       - development
       - production

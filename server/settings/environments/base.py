@@ -20,10 +20,10 @@ load_dotenv()
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
 # Основные настройки Yandex Cloud S3
-AWS_ACCESS_KEY_ID = 'YCAJEsXZW5hb-D0ezzq8z1in-'  # IAM-ключ
-AWS_SECRET_ACCESS_KEY = 'YCPJ5w6vwQIX_OhDd0i5UsmTiAixbfHRnhY337Zw'  # IAM-секрет
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')  # IAM-ключ
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')  # IAM-секрет
 AWS_S3_ENDPOINT_URL = 'https://storage.yandexcloud.net'
-AWS_S3_REGION_NAME = 'ru-central1'
+AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
 AWS_S3_SIGNATURE_VERSION = 's3v4'
 
 # Публичный бакет (для статики/медиа)
@@ -32,7 +32,7 @@ AWS_DEFAULT_ACL = 'public-read'  # Файлы доступны без автор
 AWS_QUERYSTRING_AUTH = False  # Не требовать подписи URL
 
 # Приватный бакет (для документов)
-PRIVATE_AWS_STORAGE_BUCKET_NAME = 'vits-private'  # Имя приватного бакета
+PRIVATE_AWS_STORAGE_BUCKET_NAME = os.getenv('PRIVATE_AWS_STORAGE_BUCKET_NAME')  # Имя приватного бакета
 PRIVATE_AWS_DEFAULT_ACL = 'private'  # Доступ только по подписи
 PRIVATE_AWS_QUERYSTRING_AUTH = True  # Генерировать подписанные URL
 
@@ -41,30 +41,29 @@ PUBLIC_MEDIA_LOCATION = 'media'  # Папка в публичном бакете
 PRIVATE_MEDIA_LOCATION = 'protected'  # Папка в приватном бакете
 
 # VK OAuth 2.1https://www.pythonanywhere.com/user/Tamik327/files/home/Tamik327/back-vits/server/settings
-VK_CLIENT_ID = '53621398'
-VK_CLIENT_SECRET = 'd99d7316d99d7316d99d731615daaf4180dd99dd99d7316b1ae015d6901a7ff146ec7fe'
-VK_REDIRECT_URI = 'https://vits44.ru/auth/vk/callback/'
+VK_CLIENT_ID = os.getenv('VK_CLIENT_ID')
+VK_CLIENT_SECRET = os.getenv('VK_CLIENT_SECRET')
+VK_REDIRECT_URI = os.getenv('VK_REDIRECT_URI')
 VK_API_VERSION = '5.199'
 VK_AUTH_URL = "https://id.vk.com/authorize"
 VK_TOKEN_URL = "https://id.vk.com/oauth2/auth"  # Ключевое изменение!
 VK_SCOPE = 'email,phone'  # Только необходимые scope
-FRONT_VK_CALLBACK = 'https://tamik.surge.sh/'
+FRONT_VK_CALLBACK = os.getenv('FRONT_VK_CALLBACK')
 
-EXOLVE_SENDER_NAME = "79300650829"
-EXOLVE_API_KEY = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJRV05sMENiTXY1SHZSV29CVUpkWjVNQURXSFVDS0NWODRlNGMzbEQtVHA0In0.eyJleHAiOjIwNjQ3NTI1NjMsImlhdCI6MTc0OTM5MjU2MywianRpIjoiOThkNzE2NjQtODJhOS00ZDY5LWI3MzgtYmIzYmVlYjU3MzE4IiwiaXNzIjoiaHR0cHM6Ly9zc28uZXhvbHZlLnJ1L3JlYWxtcy9FeG9sdmUiLCJhdWQiOiJhY2NvdW50Iiwic3ViIjoiN2IyMmNhYjUtMGM1MC00MmUyLTkxNDUtZGMwOWYyYzc1MGVmIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiNjFlZjNmMjgtNWYyMS00NTFkLWE3ZmItY2NhNDk2MWU2NWIzIiwic2Vzc2lvbl9zdGF0ZSI6IjZmMWYxMDQ3LTZmNjMtNDI4MS04NjU2LWU2ZjUzYmExNjI3YiIsImFjciI6IjEiLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiZGVmYXVsdC1yb2xlcy1leG9sdmUiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYWNjb3VudCI6eyJyb2xlcyI6WyJtYW5hZ2UtYWNjb3VudCIsIm1hbmFnZS1hY2NvdW50LWxpbmtzIiwidmlldy1wcm9maWxlIl19fSwic2NvcGUiOiJleG9sdmVfYXBwIHByb2ZpbGUgZW1haWwiLCJzaWQiOiI2ZjFmMTA0Ny02ZjYzLTQyODEtODY1Ni1lNmY1M2JhMTYyN2IiLCJ1c2VyX3V1aWQiOiI4NTczM2RjYy0zMTczLTQ5MzItYTczOS05NmUxYmIyNmI4MzciLCJjbGllbnRIb3N0IjoiMTcyLjE2LjE2MS4xOSIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwiY2xpZW50SWQiOiI2MWVmM2YyOC01ZjIxLTQ1MWQtYTdmYi1jY2E0OTYxZTY1YjMiLCJhcGlfa2V5Ijp0cnVlLCJhcGlmb25pY2Ffc2lkIjoiNjFlZjNmMjgtNWYyMS00NTFkLWE3ZmItY2NhNDk2MWU2NWIzIiwiYmlsbGluZ19udW1iZXIiOiIxMzMwODM5IiwiYXBpZm9uaWNhX3Rva2VuIjoiYXV0ZmNmMzY0YmUtMTYwMi00NTI0LWE5Y2MtMWI1MTY2YzhlZTgxIiwicHJlZmVycmVkX3VzZXJuYW1lIjoic2VydmljZS1hY2NvdW50LTYxZWYzZjI4LTVmMjEtNDUxZC1hN2ZiLWNjYTQ5NjFlNjViMyIsImN1c3RvbWVyX2lkIjoiMTM0MjM5IiwiY2xpZW50QWRkcmVzcyI6IjE3Mi4xNi4xNjEuMTkifQ.MLnxvf_jT2T00hUv7K7Wc0rdbUf4FQO9g4puWgWcMWNfIbjrLH-PjgIzK7468M7dhDl9lIcW8-fMfdPy6eWrNkc232TYD9Iqqjzf2xgjUOBgxbOBFgKRQGxozusnbwrW72pkqDtVK-UGWJtQBNWraW6VwqyfEVhTEAQ0Vu__8EQn0dGcs45pm5Oxwqqo9N-T9si5Ygagug2Jw7cYzDEprCErOloR4UQ2DlQlt3OoBev9_K4loi8FDxdcxUezM2yyCXyBJNgncbhvb9aCjsxckP9hKQOMFQdrV1bAV8EoBha3GQX-AXbAzW0T9hsbx8Zs0szff7UkhV5M1YVVxq1lJg"
-EXOLVE_SMPP_LOGIN = "ei4h6k3vehgg"
-EXOLVE_SMPP_PASSWORD = "RWv4kQ09"
+EXOLVE_SENDER_NAME = os.getenv('EXOLVE_SENDER_NAME')
+EXOLVE_API_KEY = os.getenv('EXOLVE_API_KEY')
+EXOLVE_SMPP_LOGIN = os.getenv('EXOLVE_SMPP_LOGIN')
+EXOLVE_SMPP_PASSWORD = os.getenv('EXOLVE_SMPP_PASSWORD')
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-SMSRU_API_ID = '0D3B2BC8-BB00-062A-3496-E40613279A32'
-SMS_SENDER_NAME = "vits"
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-3zyo8&mht8vs9q-1dcfc74zzuw55_zsbudgcr4^k2m4g1pnz(a'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
@@ -72,8 +71,10 @@ DEBUG = False
 ALLOWED_HOSTS = []
 
 # Настройки SMS.RU
-SMSRU_API_KEY = '0D3B2BC8-BB00-062A-3496-E40613279A32'  # Например, '12345678-ABCD-4321-5678-9876543210'
-SMSRU_SENDER = 'VITS'  # Имя отправителя (должно быть заранее зарегистрировано в sms.ru)
+SMSRU_API_KEY = ''  # Например, '12345678-ABCD-4321-5678-9876543210'
+SMSRU_SENDER = ''  # Имя отправителя (должно быть заранее зарегистрировано в sms.ru)
+SMSRU_API_ID = ''
+SMS_SENDER_NAME = ''
 
 # Настройки для Django REST Framework
 REST_FRAMEWORK = {
@@ -121,9 +122,9 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = '@gmail.com'  # Ваш Gmail
-EMAIL_HOST_PASSWORD = ''  # Пароль от Gmail или пароль приложения
-DEFAULT_FROM_EMAIL = '@gmail.com'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
 
 # Использовать http-only куки для JWT (False для dev, True для production)
 USE_JWT_COOKIES = True
